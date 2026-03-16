@@ -15,6 +15,10 @@ const bestEl  = document.getElementById('best');
 const overlay        = document.getElementById('overlay');
 const gameoverOverlay= document.getElementById('gameover-overlay');
 const startBtn       = document.getElementById('start-btn');
+
+// Disable start button until audio is loaded
+startBtn.disabled    = true;
+startBtn.textContent = 'LOADING...';
 const restartBtn     = document.getElementById('restart-btn');
 const finalScoreDisplay = document.getElementById('final-score-display');
 
@@ -30,27 +34,25 @@ function resizeCanvas() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const reservedBelow = isTouch ? 120 : 36;
-  const availH = vh - reservedBelow;
+  const reservedTop   = 40;
+  const reservedBelow = isTouch ? 60 : 36;
+  const availH = vh - reservedTop - reservedBelow;
   const scale  = Math.min(vw / GAME_W, availH / GAME_H);
   const w = Math.floor(GAME_W * scale);
   const h = Math.floor(GAME_H * scale);
   const x = Math.floor((vw - w) / 2);
-  const y = Math.floor((vh - reservedBelow - h) / 2);
-
-  if (w !== _rszW || h !== _rszH || x !== _rszX || y !== _rszY) {
-    canvas.style.width    = w + 'px';
-    canvas.style.height   = h + 'px';
-    canvas.style.position = 'fixed';
-    canvas.style.left     = x + 'px';
-    canvas.style.top      = y + 'px';
-    const root = document.documentElement.style;
-    root.setProperty('--canvas-left',   x + 'px');
-    root.setProperty('--canvas-top',    y + 'px');
-    root.setProperty('--canvas-width',  w + 'px');
-    root.setProperty('--canvas-height', h + 'px');
-    _rszW = w; _rszH = h; _rszX = x; _rszY = y;
-  }
+  const y = reservedTop + Math.floor((availH - h) / 2);
+  canvas.style.width    = w + 'px';
+  canvas.style.height   = h + 'px';
+  canvas.style.position = 'fixed';
+  canvas.style.left     = x + 'px';
+  canvas.style.top      = y + 'px';
+  const root = document.documentElement.style;
+  root.setProperty('--canvas-left',   x + 'px');
+  root.setProperty('--canvas-top',    y + 'px');
+  root.setProperty('--canvas-width',  w + 'px');
+  root.setProperty('--canvas-height', h + 'px');
+  _rszW = w; _rszH = h; _rszX = x; _rszY = y;
 
   // Only clears the canvas if dimensions actually change
   if (canvas.width  !== GAME_W) canvas.width  = GAME_W;
@@ -87,7 +89,12 @@ fetch('Assets/music.mp3')
     const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     return ac.decodeAudioData(buf);
   })
-  .then(decoded => { musicBuffer = decoded; if (audioUnlocked) startBgMusic(); })
+  .then(decoded => {
+    musicBuffer = decoded;
+    if (audioUnlocked && !musicSource) startBgMusic();
+    const btn = document.getElementById('start-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'FEED THE BEASTS'; }
+  })
   .catch(() => {}); // silently ignore missing asset during development
 
 function startBgMusic() {
@@ -111,7 +118,7 @@ function stopBgMusic() {
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  getAudioCtx().resume().then(startBgMusic).catch(() => {});
+  getAudioCtx().resume().catch(() => {});
 }
 
 // Unlock on first keyboard press too
@@ -678,6 +685,7 @@ function startGame() {
 
   _hudScore = _hudWave = _hudLives = _hudBest = -1;
   updateHUD();
+  if (audioUnlocked && !musicSource) startBgMusic();
   state = 'playing';
 }
 
