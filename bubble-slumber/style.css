@@ -41,6 +41,8 @@ html, body {
 
 canvas {
   display: block;
+  max-width: 100vw;
+  max-height: 100vh;
   border: 2px solid #cc88ff;
   box-shadow: 0 0 30px #cc88ff40;
   image-rendering: -webkit-optimize-contrast;
