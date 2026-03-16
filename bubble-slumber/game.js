@@ -1,75 +1,59 @@
 // ─────────────────────────────────────────────────────────
-//  BEAST FEEDER  —  game.js
+//  BUBBLE SLUMBER  —  Bubble Shooter
+//  All art drawn via canvas API, no sprites.
 // ─────────────────────────────────────────────────────────
 
-const canvas  = document.getElementById('gameCanvas');
-const ctx     = canvas.getContext('2d');
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
 
-// ── HUD references ────────────────────────────────────────
-const scoreEl = document.getElementById('score');
-const waveEl  = document.getElementById('wave');
-const livesEl = document.getElementById('lives');
-const bestEl  = document.getElementById('best');
+const GAME_W = 480;
+const GAME_H = 700;
 
-// ── Overlay references ────────────────────────────────────
-const overlay        = document.getElementById('overlay');
-const gameoverOverlay= document.getElementById('gameover-overlay');
-const startBtn       = document.getElementById('start-btn');
-const restartBtn     = document.getElementById('restart-btn');
-const finalScoreDisplay = document.getElementById('final-score-display');
-
-// ─────────────────────────────────────────────────────────
-//  CANVAS SIZING  (letterbox, same as reference game)
-// ─────────────────────────────────────────────────────────
-const GAME_W = 800;
-const GAME_H = 600;
-
+// ── Canvas sizing (letterbox) ─────────────────────────────
+let canvasRect = null;
 let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
 function resizeCanvas() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const vw = window.innerWidth, vh = window.innerHeight;
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
   const reservedBelow = isTouch ? 60 : 36;
-  const availH = vh - reservedBelow;
-  const scale  = Math.min(vw / GAME_W, availH / GAME_H);
+  const scale = Math.min(vw / GAME_W, (vh - reservedBelow) / GAME_H);
   const w = Math.floor(GAME_W * scale);
   const h = Math.floor(GAME_H * scale);
   const x = Math.floor((vw - w) / 2);
   const y = Math.floor((vh - reservedBelow - h) / 2);
-
   canvas.style.width    = w + 'px';
   canvas.style.height   = h + 'px';
   canvas.style.position = 'fixed';
   canvas.style.left     = x + 'px';
   canvas.style.top      = y + 'px';
-  const root = document.documentElement.style;
-  root.setProperty('--canvas-left',   x + 'px');
-  root.setProperty('--canvas-top',    y + 'px');
-  root.setProperty('--canvas-width',  w + 'px');
-  root.setProperty('--canvas-height', h + 'px');
+  const r = document.documentElement.style;
+  r.setProperty('--canvas-left',   x + 'px');
+  r.setProperty('--canvas-top',    y + 'px');
+  r.setProperty('--canvas-width',  w + 'px');
+  r.setProperty('--canvas-height', h + 'px');
   _rszW = w; _rszH = h; _rszX = x; _rszY = y;
-
   if (canvas.width  !== GAME_W) canvas.width  = GAME_W;
   if (canvas.height !== GAME_H) canvas.height = GAME_H;
 }
 
-let canvasRect = null;
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 resizeCanvas();
 requestAnimationFrame(() => { canvasRect = canvas.getBoundingClientRect(); });
 
+function canvasPoint(clientX, clientY) {
+  const rect  = canvasRect || canvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left) * (GAME_W / rect.width),
+    y: (clientY - rect.top)  * (GAME_H / rect.height),
+  };
+}
+
 // ─────────────────────────────────────────────────────────
-//  AUDIO  — Web Audio API (matches reference game pattern)
-//  MP3 music fetched at load; SFX synthesised via oscillators.
-//  AudioContext is created and resumed only inside a user
-//  gesture so iOS Safari allows playback.
+//  AUDIO
 // ─────────────────────────────────────────────────────────
-let audioCtx      = null;
-let musicBuffer   = null;   // decoded AudioBuffer for the MP3
-let musicSource   = null;   // currently playing BufferSourceNode
-let musicGain     = null;   // GainNode so we can control volume
-let audioUnlocked = false;  // true after first gesture
+let audioCtx = null, musicBuffer = null, musicSource = null;
+let musicGain = null, audioUnlocked = false;
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -77,26 +61,25 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-// Fetch the MP3 immediately — no gesture needed for fetch itself
 fetch('Assets/music.mp3')
   .then(r => r.arrayBuffer())
   .then(buf => {
     const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     return ac.decodeAudioData(buf);
   })
-  .then(decoded => { musicBuffer = decoded; if (audioUnlocked) startBgMusic(); })
-  .catch(() => {}); // silently ignore missing asset during development
+  .then(d => { musicBuffer = d; })
+  .catch(() => {});
 
 function startBgMusic() {
   const ac = getAudioCtx();
   if (!musicBuffer || !ac) return;
   if (musicSource) { try { musicSource.stop(); } catch(e) {} musicSource = null; }
-  musicGain             = ac.createGain();
-  musicGain.gain.value  = 0.45;
+  musicGain = ac.createGain();
+  musicGain.gain.value = 0.45;
   musicGain.connect(ac.destination);
-  musicSource           = ac.createBufferSource();
-  musicSource.buffer    = musicBuffer;
-  musicSource.loop      = true;
+  musicSource = ac.createBufferSource();
+  musicSource.buffer = musicBuffer;
+  musicSource.loop   = true;
   musicSource.connect(musicGain);
   musicSource.start(0);
 }
@@ -108,746 +91,874 @@ function stopBgMusic() {
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  const ac = getAudioCtx();
-  ac.resume().then(() => { if (musicBuffer && !musicSource) startBgMusic(); }).catch(() => {});
+  const ac = getAudioCtx(); ac.resume().then(() => { if (musicBuffer && !musicSource) startBgMusic(); }).catch(() => {});
 }
-
-// Unlock on first keyboard press too
 document.addEventListener('keydown', unlockAudio, { once: true });
 
-// ── Low-level synth helpers ───────────────────────────────
-function playTone(freq, endFreq, duration, type, gain, delay = 0) {
-  const ac  = getAudioCtx();
-  const t   = ac.currentTime + delay;
-  const osc = ac.createOscillator();
-  const env = ac.createGain();
+function playTone(freq, endFreq, dur, type, gain, delay = 0) {
+  const ac = getAudioCtx(), t = ac.currentTime + delay;
+  const osc = ac.createOscillator(), env = ac.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(freq, t);
-  if (endFreq !== freq)
-    osc.frequency.exponentialRampToValueAtTime(Math.max(endFreq, 1), t + duration);
+  if (endFreq !== freq) osc.frequency.exponentialRampToValueAtTime(Math.max(endFreq,1), t + dur);
   env.gain.setValueAtTime(gain, t);
-  env.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-  osc.connect(env);
-  env.connect(ac.destination);
-  osc.start(t);
-  osc.stop(t + duration + 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(env); env.connect(ac.destination);
+  osc.start(t); osc.stop(t + dur + 0.01);
 }
 
-function playNoise(duration, gain, filterFreq = 800, delay = 0) {
-  const ac     = getAudioCtx();
-  const t      = ac.currentTime + delay;
-  const frames = ac.sampleRate * (duration + 0.05);
-  const buf    = ac.createBuffer(1, frames, ac.sampleRate);
-  const data   = buf.getChannelData(0);
+function playNoise(dur, gain, filterFreq = 600, delay = 0) {
+  const ac = getAudioCtx(), t = ac.currentTime + delay;
+  const frames = ac.sampleRate * (dur + 0.05);
+  const buf = ac.createBuffer(1, frames, ac.sampleRate);
+  const data = buf.getChannelData(0);
   for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
-  const src    = ac.createBufferSource();
-  const filter = ac.createBiquadFilter();
-  const env    = ac.createGain();
-  filter.type            = 'bandpass';
-  filter.frequency.value = filterFreq;
-  filter.Q.value         = 0.6;
+  const src = ac.createBufferSource(), filter = ac.createBiquadFilter(), env = ac.createGain();
+  filter.type = 'bandpass'; filter.frequency.value = filterFreq; filter.Q.value = 0.8;
   env.gain.setValueAtTime(gain, t);
-  env.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-  src.buffer = buf;
-  src.connect(filter);
-  filter.connect(env);
-  env.connect(ac.destination);
-  src.start(t);
-  src.stop(t + duration + 0.05);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.buffer = buf; src.connect(filter); filter.connect(env); env.connect(ac.destination);
+  src.start(t); src.stop(t + dur + 0.05);
 }
 
-// ── Sound effects ─────────────────────────────────────────
+function sfxShoot()   { playTone(400, 800, 0.08, 'sine', 0.15); playNoise(0.05, 0.1, 800); }
+function sfxPop()     { playTone(600, 300, 0.12, 'sine', 0.22); playNoise(0.10, 0.25, 1000); }
+function sfxCombo()   { [523,659,784,1047].forEach((f,i) => playTone(f,f,0.10,'sine',0.20,i*0.07)); }
+function sfxDrop()    { playTone(200, 60,  0.40, 'sawtooth', 0.35); playNoise(0.3, 0.4, 200); }
+function sfxGameOver(){ playTone(330,330,0.3,'square',0.3,0.0); playTone(247,247,0.3,'square',0.3,0.35); playTone(185,185,0.7,'square',0.3,0.70); }
+function sfxWin()     { [392,494,587,698,784].forEach((f,i) => playTone(f,f,0.14,'sine',0.25,i*0.09)); }
 
-// Bottle fired — swooshy rising squirt
-function sfxFire() {
-  playTone(300, 900, 0.10, 'sine',     0.15);
-  playTone(600, 200, 0.08, 'triangle', 0.08, 0.05);
-}
+// ─────────────────────────────────────────────────────────
+//  BUBBLE COLOURS — 4 dream categories
+// ─────────────────────────────────────────────────────────
+const COLOURS = [
+  { fill: '#cc44ff', stroke: '#dd88ff', label: 'NIGHTMARE' },  // 0 purple
+  { fill: '#4488ff', stroke: '#88bbff', label: 'DAYDREAM'  },  // 1 blue
+  { fill: '#ffcc44', stroke: '#ffdd88', label: 'MEMORY'    },  // 2 gold
+  { fill: '#44ddaa', stroke: '#88eebb', label: 'LUCID'     },  // 3 teal
+];
+const NUM_COLOURS = COLOURS.length;
 
-// Kitten hit — soft satisfying "pap" + happy squeak
-function sfxKittenHit() {
-  playTone(520, 780, 0.07, 'sine',     0.22);
-  playTone(900, 600, 0.10, 'triangle', 0.12, 0.06);
-  playNoise(0.06, 0.18, 1200);
-}
+// ─────────────────────────────────────────────────────────
+//  GRID CONSTANTS
+// ─────────────────────────────────────────────────────────
+const R        = 22;          // bubble radius
+const COLS     = 10;
+const COL_W    = R * 2;       // 44px per column
+const GRID_X   = (GAME_W - COLS * COL_W) / 2;  // left edge of grid
+const GRID_TOP = 48;          // y of first row
+const ROW_H    = R * 1.85;    // row height (slight overlap)
 
-// Kitten reaches launcher — low thud + distressed tone
-function sfxLifeLost() {
-  playTone(200, 60,  0.35, 'sawtooth', 0.40);
-  playTone(150, 40,  0.45, 'square',   0.25, 0.04);
-  playNoise(0.30, 0.45, 200);
-}
+// Danger line — if any bubble reaches here Kobie loses a life
+const DANGER_Y = GAME_H - 175;
 
-// Wave cleared — ascending chime arpeggio
-function sfxWaveClear() {
-  [330, 415, 523, 659, 784, 1047].forEach((f, i) =>
-    playTone(f, f, 0.14, 'sine', 0.22, i * 0.09));
-}
-
-// Game over — descending minor phrase
-function sfxGameOver() {
-  playTone(392, 392, 0.30, 'square', 0.32, 0.00);
-  playTone(330, 330, 0.30, 'square', 0.32, 0.35);
-  playTone(262, 262, 0.70, 'square', 0.32, 0.70);
-}
-
-
-//  Replace these with image loads — just swap drawXxx()
-//  to ctx.drawImage(img, x, y, w, h)
+// ─────────────────────────────────────────────────────────
+//  DRAW HELPERS
 // ─────────────────────────────────────────────────────────
 
-// Biscuit launcher — sits at bottom-centre
-function drawBottle(x, y, angle, scale = 1) {
+// Draw a dream bubble at cx,cy with radius r
+function drawEmailBubble(cx, cy, r, colIdx) {
+  const c = COLOURS[colIdx];
+
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.scale(scale, scale);
 
-  // Main biscuit body
-  ctx.fillStyle = '#e8b84b';
+  // Outer glow
   ctx.beginPath();
-  ctx.ellipse(0, 0, 22, 18, 0, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r + 3, 0, Math.PI * 2);
+  ctx.fillStyle = c.fill + '22';
   ctx.fill();
-  // Darker edge
-  ctx.strokeStyle = '#c8942a';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-  // Inner lighter surface
-  ctx.fillStyle = '#f5c84a';
+
+  // Bubble body
+  const grd = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, r*0.1, cx, cy, r);
+  grd.addColorStop(0, c.fill + 'dd');
+  grd.addColorStop(1, c.fill + '88');
   ctx.beginPath();
-  ctx.ellipse(0, 0, 17, 13, 0, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
   ctx.fill();
-  // Dot pattern
-  ctx.fillStyle = '#c8942a';
-  for (const [dx, dy] of [[-6,-4],[6,-4],[0,4],[-10,0],[10,0]]) {
-    ctx.beginPath();
-    ctx.arc(dx, dy, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-// Projectile biscuit (small, tumbling)
-function drawProjectileBottle(x, y, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-
-  ctx.fillStyle = '#e8b84b';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 11, 9, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#c8942a';
+  ctx.strokeStyle = c.stroke;
   ctx.lineWidth = 1.5;
   ctx.stroke();
-  ctx.fillStyle = '#f5c84a';
+
+  // Shine
   ctx.beginPath();
-  ctx.ellipse(0, 0, 8, 6, 0, 0, Math.PI * 2);
+  ctx.arc(cx - r*0.28, cy - r*0.28, r*0.22, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.fill();
-  // Dots
-  ctx.fillStyle = '#c8942a';
-  for (const [dx, dy] of [[-3,-2],[3,-2],[0,3]]) {
+
+  // ── Dream icon — unique per category ──────────────────
+  ctx.fillStyle = 'rgba(255,255,255,0.80)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.80)';
+
+  if (colIdx === 0) {
+    // NIGHTMARE — jagged lightning bolt
     ctx.beginPath();
-    ctx.arc(dx, dy, 1, 0, Math.PI * 2);
+    ctx.moveTo(cx + r*0.1, cy - r*0.5);
+    ctx.lineTo(cx - r*0.15, cy - r*0.05);
+    ctx.lineTo(cx + r*0.08, cy - r*0.05);
+    ctx.lineTo(cx - r*0.1, cy + r*0.5);
+    ctx.lineTo(cx + r*0.18, cy + r*0.05);
+    ctx.lineTo(cx - r*0.05, cy + r*0.05);
+    ctx.closePath();
     ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-// Kitten colours
-const KITTEN_COLORS     = ['#f4a460', '#888', '#ff9999', '#ccc', '#c8a882'];
-const KITTEN_EAR_COLORS = ['#ffb6c1', '#aaa', '#ffaaaa', '#ddd', '#d4b896'];
-
-// Dog colours
-const DOG_COLORS        = ['#c8a05a', '#8B5e3c', '#d4c4a0', '#555', '#e8d0a0'];
-const DOG_SNOUT_COLORS  = ['#d4b070', '#aa7050', '#e0d0b0', '#777', '#f0e0c0'];
-
-function drawKitten(x, y, size, colorIdx, frame) {
-  const c  = KITTEN_COLORS[colorIdx % KITTEN_COLORS.length];
-  const ec = KITTEN_EAR_COLORS[colorIdx % KITTEN_COLORS.length];
-  const bob = Math.sin(frame * 0.15) * 2;
-
-  ctx.save();
-  ctx.translate(x, y + bob);
-
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath();
-  ctx.ellipse(0, size * 0.55, size * 0.4, size * 0.12, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Body
-  ctx.fillStyle = c;
-  ctx.beginPath();
-  ctx.ellipse(0, size * 0.2, size * 0.35, size * 0.28, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Head
-  ctx.beginPath();
-  ctx.arc(0, -size * 0.15, size * 0.28, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Ears
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.22, -size * 0.34);
-  ctx.lineTo(-size * 0.32, -size * 0.54);
-  ctx.lineTo(-size * 0.1,  -size * 0.36);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(size * 0.22, -size * 0.34);
-  ctx.lineTo(size * 0.32, -size * 0.54);
-  ctx.lineTo(size * 0.1,  -size * 0.36);
-  ctx.closePath();
-  ctx.fill();
-
-  // Inner ears
-  ctx.fillStyle = ec;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.21, -size * 0.37);
-  ctx.lineTo(-size * 0.29, -size * 0.51);
-  ctx.lineTo(-size * 0.13, -size * 0.38);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(size * 0.21, -size * 0.37);
-  ctx.lineTo(size * 0.29, -size * 0.51);
-  ctx.lineTo(size * 0.13, -size * 0.38);
-  ctx.closePath();
-  ctx.fill();
-
-  // Eyes (blinking)
-  const blink = (frame % 90 < 6);
-  ctx.fillStyle = '#222';
-  if (blink) {
-    ctx.fillRect(-size * 0.12, -size * 0.19, size * 0.1, size * 0.03);
-    ctx.fillRect(size * 0.02, -size * 0.19, size * 0.1, size * 0.03);
-  } else {
+  } else if (colIdx === 1) {
+    // DAYDREAM — crescent moon
     ctx.beginPath();
-    ctx.arc(-size * 0.09, -size * 0.18, size * 0.065, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r*0.42, 0, Math.PI*2);
     ctx.fill();
+    ctx.fillStyle = c.fill + 'dd';
     ctx.beginPath();
-    ctx.arc(size * 0.09, -size * 0.18, size * 0.065, 0, Math.PI * 2);
+    ctx.arc(cx + r*0.14, cy - r*0.08, r*0.34, 0, Math.PI*2);
     ctx.fill();
-    // Shine
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(-size * 0.07, -size * 0.20, size * 0.022, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(size * 0.11, -size * 0.20, size * 0.022, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Nose
-  ctx.fillStyle = '#ff9999';
-  ctx.beginPath();
-  ctx.arc(0, -size * 0.09, size * 0.04, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Mouth
-  ctx.strokeStyle = '#555';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.06, -size * 0.05);
-  ctx.quadraticCurveTo(-size * 0.1, -size * 0.01, -size * 0.14, -size * 0.05);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(size * 0.06, -size * 0.05);
-  ctx.quadraticCurveTo(size * 0.1, -size * 0.01, size * 0.14, -size * 0.05);
-  ctx.stroke();
-
-  // Whiskers
-  ctx.strokeStyle = '#fff8';
-  ctx.lineWidth = 0.8;
-  for (let s of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      const ay = -size * 0.09 + (i - 1) * size * 0.06;
-      ctx.beginPath();
-      ctx.moveTo(s * size * 0.05, ay);
-      ctx.lineTo(s * size * 0.28, ay + (i - 1) * size * 0.04);
-      ctx.stroke();
+    // small stars
+    ctx.fillStyle = 'rgba(255,255,255,0.80)';
+    for (const [sx, sy, sr] of [[r*0.38, -r*0.38, 2.5], [-r*0.3, r*0.3, 2]]) {
+      ctx.beginPath(); ctx.arc(cx+sx, cy+sy, sr, 0, Math.PI*2); ctx.fill();
     }
-  }
-
-  // Tail
-  ctx.strokeStyle = c;
-  ctx.lineWidth = size * 0.08;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(size * 0.3, size * 0.28);
-  const tailWag = Math.sin(frame * 0.12) * 15;
-  ctx.quadraticCurveTo(
-    size * 0.55 + tailWag * 0.1, size * 0.1,
-    size * 0.5,  -size * 0.1 + Math.sin(frame * 0.12) * size * 0.15
-  );
-  ctx.stroke();
-
-  // Hungry speech bubble
-  if (frame % 120 < 30) {
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#ff69b4';
+  } else if (colIdx === 2) {
+    // MEMORY — small hourglass shape
     ctx.lineWidth = 1.5;
+    const hw = r*0.28, hh = r*0.44;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
     ctx.beginPath();
-    ctx.roundRect(-size * 0.2, -size * 0.85, size * 0.6, size * 0.28, 4);
-    ctx.fill();
-    ctx.stroke();
-    // Tail of bubble
+    ctx.moveTo(cx - hw, cy - hh); ctx.lineTo(cx + hw, cy - hh);
+    ctx.lineTo(cx - hw, cy + hh); ctx.lineTo(cx + hw, cy + hh);
+    ctx.closePath(); ctx.stroke();
+    // sand fill top
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.beginPath();
-    ctx.moveTo(-size * 0.05, -size * 0.57);
-    ctx.lineTo(-size * 0.14, -size * 0.48);
-    ctx.lineTo(size * 0.05, -size * 0.57);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-    ctx.font = `bold ${size * 0.18}px 'Courier New', monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ff69b4';
-    ctx.fillText('TREAT!', size * 0.1, -size * 0.64);
+    ctx.moveTo(cx - hw, cy - hh);
+    ctx.lineTo(cx + hw, cy - hh);
+    ctx.lineTo(cx, cy);
+    ctx.closePath(); ctx.fill();
+    // sand fill bottom (half full)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + r*0.05);
+    ctx.lineTo(cx - hw*0.5, cy + hh);
+    ctx.lineTo(cx + hw*0.5, cy + hh);
+    ctx.closePath(); ctx.fill();
+  } else if (colIdx === 3) {
+    // LUCID — eye symbol
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(cx - r*0.45, cy);
+    ctx.quadraticCurveTo(cx, cy - r*0.38, cx + r*0.45, cy);
+    ctx.quadraticCurveTo(cx, cy + r*0.38, cx - r*0.45, cy);
+    ctx.closePath(); ctx.stroke();
+    // Iris
+    ctx.beginPath(); ctx.arc(cx, cy, r*0.2, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+    // Pupil
+    ctx.beginPath(); ctx.arc(cx, cy, r*0.1, 0, Math.PI*2);
+    ctx.fillStyle = c.fill + 'cc'; ctx.fill();
   }
+
+  // Category label
+  ctx.font = `bold ${Math.max(6, r * 0.28)}px 'Courier New', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.80)';
+  ctx.fillText(c.label, cx, cy + r * 0.82);
 
   ctx.restore();
 }
 
-// Dog sprite
-function drawDog(x, y, size, colorIdx, frame) {
-  const c  = DOG_COLORS[colorIdx % DOG_COLORS.length];
-  const sc = DOG_SNOUT_COLORS[colorIdx % DOG_COLORS.length];
-  const bob = Math.sin(frame * 0.15) * 2;
-
+// Draw Kobie in pyjamas — dream shooter at bottom
+function drawKobie(cx, cy, aimAngle) {
   ctx.save();
-  ctx.translate(x, y + bob);
+  ctx.translate(cx, cy);
 
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  const hairCol  = '#343432';
+  const skinCol  = '#f5c6a0';
+  const pyjamaCol = '#8844cc';   // purple pyjamas
+  const pyjamaStripe = '#aa66ee';
+
+  // ── Pyjama body ───────────────────────────────────────
+  ctx.fillStyle = pyjamaCol;
   ctx.beginPath();
-  ctx.ellipse(0, size * 0.55, size * 0.45, size * 0.13, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 12, 18, 22, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Body — slightly chunkier than cat
-  ctx.fillStyle = c;
-  ctx.beginPath();
-  ctx.ellipse(0, size * 0.2, size * 0.42, size * 0.32, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Head — rounder
-  ctx.beginPath();
-  ctx.arc(0, -size * 0.12, size * 0.32, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Floppy ears — hang down from sides of head
-  ctx.fillStyle = darkenColor(c, 0.15);
-  ctx.beginPath();
-  ctx.ellipse(-size * 0.38, -size * 0.05, size * 0.13, size * 0.24, 0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(size * 0.38, -size * 0.05, size * 0.13, size * 0.24, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Snout / muzzle
-  ctx.fillStyle = sc;
-  ctx.beginPath();
-  ctx.ellipse(0, -size * 0.02, size * 0.2, size * 0.15, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Eyes (blinking)
-  const blink = (frame % 90 < 6);
-  ctx.fillStyle = '#222';
-  if (blink) {
-    ctx.fillRect(-size * 0.14, -size * 0.2, size * 0.1, size * 0.03);
-    ctx.fillRect(size * 0.04,  -size * 0.2, size * 0.1, size * 0.03);
-  } else {
+  // Pyjama stripes
+  ctx.strokeStyle = pyjamaStripe;
+  ctx.lineWidth = 2;
+  for (let i = -12; i <= 12; i += 6) {
     ctx.beginPath();
-    ctx.arc(-size * 0.1, -size * 0.2, size * 0.07, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(size * 0.1, -size * 0.2, size * 0.07, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(-size * 0.08, -size * 0.22, size * 0.025, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(size * 0.12, -size * 0.22, size * 0.025, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Nose — bigger than cat's
-  ctx.fillStyle = '#333';
-  ctx.beginPath();
-  ctx.ellipse(0, -size * 0.04, size * 0.07, size * 0.05, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Mouth
-  ctx.strokeStyle = '#555';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.07, size * 0.01);
-  ctx.quadraticCurveTo(-size * 0.12, size * 0.06, -size * 0.17, size * 0.01);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(size * 0.07, size * 0.01);
-  ctx.quadraticCurveTo(size * 0.12, size * 0.06, size * 0.17, size * 0.01);
-  ctx.stroke();
-
-  // Tongue (panting) — shows periodically
-  if (frame % 60 < 40) {
-    ctx.fillStyle = '#ff8888';
-    ctx.beginPath();
-    ctx.ellipse(0, size * 0.1, size * 0.08, size * 0.1, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Tail — wagging stub
-  ctx.strokeStyle = c;
-  ctx.lineWidth = size * 0.1;
-  ctx.lineCap = 'round';
-  const tailWag = Math.sin(frame * 0.2) * 20; // faster wag than cat
-  ctx.beginPath();
-  ctx.moveTo(size * 0.38, size * 0.15);
-  ctx.quadraticCurveTo(
-    size * 0.6 + tailWag * 0.08, size * 0.0,
-    size * 0.55, -size * 0.08 + Math.sin(frame * 0.2) * size * 0.12
-  );
-  ctx.stroke();
-
-  // Hungry speech bubble
-  if (frame % 120 < 30) {
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#ff69b4';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(-size * 0.25, -size * 0.85, size * 0.72, size * 0.28, 4);
-    ctx.fill();
+    ctx.moveTo(i, -4);
+    ctx.lineTo(i - 3, 32);
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-size * 0.05, -size * 0.57);
-    ctx.lineTo(-size * 0.14, -size * 0.48);
-    ctx.lineTo(size * 0.05,  -size * 0.57);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-    ctx.font = `bold ${size * 0.18}px 'Courier New', monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ff69b4';
-    ctx.fillText('BISCUIT!', size * 0.1, -size * 0.64);
   }
+
+  // Stars on pyjamas
+  ctx.fillStyle = 'rgba(255,220,100,0.5)';
+  for (const [sx, sy] of [[-8, 8], [7, 16], [-4, 24]]) {
+    ctx.beginPath(); ctx.arc(sx, sy, 2, 0, Math.PI*2); ctx.fill();
+  }
+
+  // ── Neck ──────────────────────────────────────────────
+  ctx.fillStyle = skinCol;
+  ctx.fillRect(-4, -6, 8, 10);
+
+  // ── Head ──────────────────────────────────────────────
+  ctx.fillStyle = skinCol;
+  ctx.beginPath();
+  ctx.ellipse(0, -18, 14, 17, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Long curly hair — back layer ──────────────────────
+  ctx.fillStyle = hairCol;
+  ctx.beginPath();
+  ctx.ellipse(0, -18, 17, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Long hair falling down sides
+  ctx.beginPath();
+  ctx.moveTo(-14, -24);
+  ctx.bezierCurveTo(-22, -10, -24, 10, -18, 28);
+  ctx.bezierCurveTo(-22, 32, -20, 38, -14, 36);
+  ctx.bezierCurveTo(-10, 42, -8, 36, -12, 30);
+  ctx.bezierCurveTo(-16, 18, -14, 4, -10, -8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(14, -24);
+  ctx.bezierCurveTo(22, -10, 24, 10, 18, 28);
+  ctx.bezierCurveTo(22, 32, 20, 38, 14, 36);
+  ctx.bezierCurveTo(10, 42, 8, 36, 12, 30);
+  ctx.bezierCurveTo(16, 18, 14, 4, 10, -8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Individual curls
+  ctx.strokeStyle = hairCol;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  [
+    [[-16, 14], [-22, 20], [-18, 28], [-14, 24]],
+    [[-15, 24], [-22, 30], [-17, 38], [-12, 34]],
+    [[16, 14],  [22, 20],  [18, 28],  [14, 24]],
+    [[15, 24],  [22, 30],  [17, 38],  [12, 34]],
+  ].forEach(pts => {
+    ctx.beginPath();
+    ctx.moveTo(...pts[0]);
+    ctx.bezierCurveTo(...pts[1], ...pts[2], ...pts[3]);
+    ctx.stroke();
+  });
+
+  // Hair highlight
+  ctx.strokeStyle = '#555553';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-6, -34); ctx.bezierCurveTo(-2, -30, 2, -30, 6, -34);
+  ctx.stroke();
+
+  // ── Face ─────────────────────────────────────────────
+  ctx.fillStyle = skinCol;
+  ctx.beginPath();
+  ctx.ellipse(0, -18, 13, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sleepy half-closed eyes
+  ctx.fillStyle = '#3a2a1a';
+  ctx.beginPath(); ctx.ellipse(-5, -20, 2.5, 3, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(5,  -20, 2.5, 3, 0, 0, Math.PI*2); ctx.fill();
+  // Eyelids (half closed — sleepy)
+  ctx.fillStyle = skinCol;
+  ctx.beginPath(); ctx.ellipse(-5, -21.5, 2.8, 1.8, 0, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(5,  -21.5, 2.8, 1.8, 0, Math.PI, 0); ctx.fill();
+  // Eye shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-4.2, -21, 0.9, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(5.8,  -21, 0.9, 0, Math.PI*2); ctx.fill();
+
+  // Eyebrows
+  ctx.strokeStyle = hairCol; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-7.5, -24); ctx.quadraticCurveTo(-5, -26, -2.5, -24); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(7.5,  -24); ctx.quadraticCurveTo(5,  -26, 2.5,  -24); ctx.stroke();
+
+  // Small smile
+  ctx.strokeStyle = '#c07850'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, -12, 4, 0.3, Math.PI - 0.3); ctx.stroke();
+
+  // Blush
+  ctx.fillStyle = 'rgba(255,150,150,0.30)';
+  ctx.beginPath(); ctx.ellipse(-8, -14, 4, 2.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(8,  -14, 4, 2.5, 0, 0, Math.PI*2); ctx.fill();
+
+  // ZZZ floating above head
+  ctx.fillStyle = 'rgba(180,140,255,0.7)';
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('z z z', 0, -42);
+
+  // ── Dream wand arm ────────────────────────────────────
+  ctx.strokeStyle = pyjamaCol;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  const armLen = 28;
+  ctx.lineTo(Math.cos(aimAngle) * armLen, Math.sin(aimAngle) * armLen);
+  ctx.stroke();
+
+  // Wand tip — glowing star
+  const wx = Math.cos(aimAngle) * armLen;
+  const wy = Math.sin(aimAngle) * armLen;
+  ctx.shadowColor = '#ffdd44';
+  ctx.shadowBlur  = 8;
+  ctx.fillStyle   = '#ffdd44';
+  ctx.beginPath(); ctx.arc(wx, wy, 5, 0, Math.PI*2); ctx.fill();
+  // Star sparkle
+  ctx.strokeStyle = '#ffee88'; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(wx + Math.cos(a)*3, wy + Math.sin(a)*3);
+    ctx.lineTo(wx + Math.cos(a)*7, wy + Math.sin(a)*7);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
 
   ctx.restore();
 }
 
-// Helper to slightly darken a hex colour
-function darkenColor(hex, amt) {
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-  return '#' + [r,g,b].map(v => Math.max(0,Math.round(v*(1-amt))).toString(16).padStart(2,'0')).join('');
-}
-let particles = [];
-
-function spawnParticles(x, y, color) {
-  for (let i = 0; i < 12; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1.5 + Math.random() * 3;
-    particles.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 1,
-      decay: 0.03 + Math.random() * 0.04,
-      size: 3 + Math.random() * 5,
-      color,
-    });
-  }
-}
-
-function updateParticles() {
-  particles = particles.filter(p => p.life > 0);
-  for (const p of particles) {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.12; // gravity
-    p.life -= p.decay;
-  }
-}
-
-function drawParticles() {
-  for (const p of particles) {
-    const radius = Math.max(0, p.size * p.life);
-    const alpha  = Math.max(0, Math.min(1, p.life));
-    const hex    = Math.round(alpha * 255).toString(16).padStart(2, '0');
-    ctx.fillStyle = p.color + hex;
+// Pop burst particles
+function drawBurst(cx, cy, colIdx, progress) {
+  const c = COLOURS[colIdx];
+  const count = 8;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const dist  = progress * R * 2.2;
+    const px = cx + Math.cos(angle) * dist;
+    const py = cy + Math.sin(angle) * dist;
+    const alpha = Math.max(0, 1 - progress);
+    const size  = Math.max(0, (1 - progress) * 5);
+    const hex   = Math.round(alpha * 255).toString(16).padStart(2, '0');
+    ctx.fillStyle = c.fill + hex;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.arc(px, py, size, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
 // ─────────────────────────────────────────────────────────
-//  STAR FIELD (background)
+//  STAR FIELD
 // ─────────────────────────────────────────────────────────
-const STARS = Array.from({ length: 80 }, () => ({
-  x: Math.random() * GAME_W,
-  y: Math.random() * GAME_H,
-  r: Math.random() * 1.5 + 0.3,
-  a: Math.random(),
-}));
+const STARS = Array.from({ length: 60 }, () => {
+  const a = Math.random() * 0.6 + 0.15;
+  const v = Math.round(a * 255).toString(16).padStart(2, '0');
+  const cols = ['#cc88ff', '#8844ff', '#4488ff', '#ffccff', '#ffffff'];
+  const col = cols[Math.floor(Math.random() * cols.length)];
+  return { x: Math.random() * GAME_W, y: Math.random() * GAME_H, r: Math.random() * 1.4 + 0.3, color: col + v };
+});
 
 function drawBackground() {
-  ctx.fillStyle = '#0a0a1a';
+  // Deep dream sky gradient
+  const bgGrd = ctx.createLinearGradient(0, 0, 0, GAME_H);
+  bgGrd.addColorStop(0, '#08041a');
+  bgGrd.addColorStop(0.5, '#0d0820');
+  bgGrd.addColorStop(1, '#120a28');
+  ctx.fillStyle = bgGrd;
   ctx.fillRect(0, 0, GAME_W, GAME_H);
+
   for (const s of STARS) {
-    ctx.globalAlpha = s.a * 0.6 + 0.2;
-    ctx.fillStyle = '#ff69b4';
+    ctx.fillStyle = s.color;
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.globalAlpha = 1;
-
-  // Ground line
-  ctx.strokeStyle = '#ff69b430';
+  // Danger line — soft lavender
+  ctx.strokeStyle = '#cc88ff40';
   ctx.lineWidth = 1;
-  ctx.setLineDash([8, 6]);
+  ctx.setLineDash([6, 5]);
   ctx.beginPath();
-  ctx.moveTo(0, GAME_H - 2);
-  ctx.lineTo(GAME_W, GAME_H - 2);
+  ctx.moveTo(0, DANGER_Y);
+  ctx.lineTo(GAME_W, DANGER_Y);
   ctx.stroke();
   ctx.setLineDash([]);
 }
 
 // ─────────────────────────────────────────────────────────
-//  GAME STATE
+//  GRID  —  hex-offset bubble grid
 // ─────────────────────────────────────────────────────────
-let state = 'start'; // 'start' | 'playing' | 'gameover'
-let score  = 0;
-let lives  = 3;
-let wave   = 1;
-let frame  = 0;
-let kittens      = [];
-let projectiles  = [];
-let nextSpawnIn  = 120;
-let waveKittensLeft = 0;
-let betweenWaves = false;
-let betweenTimer = 0;
+// grid[row][col] = colIdx (0-3) or -1 (empty)
+let grid = [];
 
-// Launcher
-const LAUNCHER_X = GAME_W / 2;
-const LAUNCHER_Y = GAME_H - 120;
+// gridParityOffset compensates for parity when rows are prepended via unshift.
+// Decrements on each push so existing rows keep their visual x-position.
+// y-position uses the raw row index — after unshift the new row is always at
+// index 0 (top) and existing rows naturally move down one index each push.
+let gridParityOffset = 0;
 
-// Drag / aim state
-let isDragging   = false;
-let dragStart    = null;  // {x, y} canvas coords
-let dragCurrent  = null;
-
-// Active float text
-let floatTexts = [];
-
-// ─────────────────────────────────────────────────────────
-//  WAVE CONFIG
-// ─────────────────────────────────────────────────────────
-function waveConfig(w) {
+// Convert grid row/col to pixel centre
+function bubblePos(row, col) {
+  const parity = (((row + gridParityOffset) % 2) + 2) % 2; // always 0 or 1
+  const offset = parity === 1 ? R : 0;
   return {
-    count:      5 + (w - 1) * 2,
-    speed:      0.4 + (w - 1) * 0.08,
-    size:       28 + Math.random() * 10,
-    spawnRate:  Math.max(60, 130 - (w - 1) * 8),
+    x: GRID_X + offset + col * COL_W + R,
+    y: GRID_TOP + row * ROW_H + R,
   };
 }
 
-// ─────────────────────────────────────────────────────────
-//  GAME INIT / RESET
-// ─────────────────────────────────────────────────────────
-function startGame() {
-  score      = 0;
-  lives      = 3;
-  wave       = 1;
-  frame      = 0;
-  kittens    = [];
-  projectiles= [];
-  particles  = [];
-  floatTexts = [];
-  betweenWaves = false;
-  betweenTimer = 0;
+// How many cols in a given row — based on visual parity
+function colsInRow(row) {
+  const parity = (((row + gridParityOffset) % 2) + 2) % 2;
+  return parity === 0 ? COLS : COLS - 1;
+}
 
-  const cfg = waveConfig(wave);
-  nextSpawnIn = cfg.spawnRate;
-  waveKittensLeft = cfg.count;
+function createGrid(wave) {
+  grid = [];
+  const rows = Math.min(4 + wave, 10);
+  for (let r = 0; r < rows; r++) {
+    grid[r] = [];
+    const cols = colsInRow(r);
+    for (let c = 0; c < cols; c++) {
+      // Higher waves introduce more colour variety
+      const maxCol = Math.min(1 + wave, NUM_COLOURS);
+      grid[r][c] = Math.floor(Math.random() * maxCol);
+    }
+  }
+}
 
-  _hudScore = _hudWave = _hudLives = _hudBest = -1;
-  updateHUD();
+// Find all bubbles reachable from the top row (to detect floating ones)
+function findConnected() {
+  const visited = new Set();
+  const queue   = [];
+  // Seed from row 0
+  for (let c = 0; c < colsInRow(0); c++) {
+    if (grid[0] && grid[0][c] >= 0) {
+      const key = '0,' + c;
+      if (!visited.has(key)) { visited.add(key); queue.push([0, c]); }
+    }
+  }
+  while (queue.length) {
+    const [r, c] = queue.pop();
+    for (const [nr, nc] of neighbours(r, c)) {
+      const key = nr + ',' + nc;
+      if (!visited.has(key) && grid[nr] && grid[nr][nc] >= 0) {
+        visited.add(key);
+        queue.push([nr, nc]);
+      }
+    }
+  }
+  return visited;
+}
+
+// Hex-grid neighbours for offset grid.
+// Even rows sit at x = GRID_X + col*COL_W + R  (no offset)
+// Odd  rows sit at x = GRID_X + col*COL_W + R + R  (shifted right by R)
+// So from an even-row cell (r,c), the two neighbours in the odd row above/below
+// are (r±1, c) and (r±1, c-1)  [odd row is shifted right, so its col c
+// aligns between even cols c and c+1, meaning even col c borders odd cols c and c-1]
+// From an odd-row cell (r,c), the two neighbours in the even row above/below
+// are (r±1, c) and (r±1, c+1)
+function neighbours(row, col) {
+  const visualParity = (((row + gridParityOffset) % 2) + 2) % 2;
+  const odd = visualParity === 1;
+  const candidates = odd ? [
+    [row - 1, col],     [row - 1, col + 1],
+    [row,     col - 1], [row,     col + 1],
+    [row + 1, col],     [row + 1, col + 1],
+  ] : [
+    [row - 1, col - 1], [row - 1, col],
+    [row,     col - 1], [row,     col + 1],
+    [row + 1, col - 1], [row + 1, col],
+  ];
+  return candidates.filter(([r, c]) => r >= 0 && c >= 0 && grid[r] && c < colsInRow(r));
+}
+
+// Snap a pixel position to the nearest *empty* grid cell adjacent to an
+// existing bubble (or the top row if the grid is empty).
+function snapToGrid(px, py) {
+  // Collect candidate cells: empty cells that are adjacent to a filled cell,
+  // plus all cells in row 0 (the ceiling).
+  const candidates = new Set();
+
+  // Always include top-row empty cells as valid landing spots
+  for (let c = 0; c < colsInRow(0); c++) {
+    if (!grid[0] || grid[0][c] < 0) candidates.add('0,' + c);
+  }
+
+  // Add empty neighbours of every filled cell
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < colsInRow(r); c++) {
+      if (grid[r][c] < 0) continue;
+      for (const [nr, nc] of neighbours(r, c)) {
+        if (grid[nr] && grid[nr][nc] < 0) candidates.add(nr + ',' + nc);
+        // Also allow one row beyond the current grid bottom
+      }
+    }
+  }
+
+  // Also allow the row just below the grid
+  const nextRow = grid.length;
+  for (let c = 0; c < colsInRow(nextRow); c++) {
+    candidates.add(nextRow + ',' + c);
+  }
+
+  let bestDist = Infinity, bestR = 0, bestC = 0;
+  for (const key of candidates) {
+    const [r, c] = key.split(',').map(Number);
+    const pos = bubblePos(r, c);
+    const d = Math.hypot(px - pos.x, py - pos.y);
+    if (d < bestDist) { bestDist = d; bestR = r; bestC = c; }
+  }
+  return [bestR, bestC];
+}
+
+// Find all connected same-colour bubbles from (row,col) — flood fill
+function findGroup(row, col) {
+  const colour = grid[row]?.[col];
+  if (colour === undefined || colour < 0) return [];
+  const visited = new Set();
+  const queue   = [[row, col]];
+  const result  = [];
+  while (queue.length) {
+    const [r, c] = queue.pop();
+    const key = r + ',' + c;
+    if (visited.has(key)) continue;
+    visited.add(key);
+    if (!grid[r] || grid[r][c] !== colour) continue;
+    result.push([r, c]);
+    for (const [nr, nc] of neighbours(r, c)) {
+      if (!visited.has(nr + ',' + nc)) queue.push([nr, nc]);
+    }
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────
+//  GAME STATE
+// ─────────────────────────────────────────────────────────
+let state       = 'start';
+let score       = 0;
+let wave        = 1;
+let frameCount  = 0;
+
+// Shooter state
+const SHOOTER_X = GAME_W / 2;
+const SHOOTER_Y = GAME_H - 80;
+let   aimAngle  = -Math.PI / 2;   // straight up
+let   nextBubbleColour = 0;
+let   currentBubbleColour = 0;
+
+// Active projectile
+let projectile = null;  // { x, y, vx, vy, colour, angle }
+
+let shotCount = 0; // tracks shots fired, separate from frameCount which counts frames
+
+// Mouse position for aim tracking — updated on every mousemove/touchmove
+let mousePos = null;  // { x, y } in canvas coords, null when cursor not over canvas
+
+// Pop animations
+let popAnims = [];   // { x, y, colIdx, progress }
+
+// Float texts
+let floatTexts = [];
+
+// HUD dirty flags
+let _hudScore = -1, _hudWave = -1, _hudBest = -1, _hudPending = false;
+
+function scheduleHUD() {
+  if (_hudPending) return;
+  _hudPending = true;
+  requestAnimationFrame(() => {
+    _hudPending = false;
+    const scoreEl = document.getElementById('score');
+    const waveEl  = document.getElementById('wave');
+    const bestEl  = document.getElementById('best');
+    const best    = hsBest('bubble-slumber');
+    if (score !== _hudScore) { scoreEl.textContent = score; _hudScore = score; }
+    if (wave  !== _hudWave)  { waveEl.textContent  = wave;  _hudWave  = wave;  }
+    if (best  !== _hudBest)  { bestEl.textContent  = best;  _hudBest  = best;  }
+  });
+}
+
+function addFloatText(x, y, text, color) {
+  floatTexts.push({ x, y, text, color, life: 1 });
+}
+
+// ─────────────────────────────────────────────────────────
+//  OVERLAY HELPERS
+// ─────────────────────────────────────────────────────────
+const overlayEl        = document.getElementById('overlay');
+const gameoverOverlay  = document.getElementById('gameover-overlay');
+const winOverlay       = document.getElementById('win-overlay');
+const startBtn         = document.getElementById('start-btn');
+const restartBtn       = document.getElementById('restart-btn');
+const nextwaveBtn      = document.getElementById('nextwave-btn');
+const finalScoreEl     = document.getElementById('final-score-display');
+const winScoreEl       = document.getElementById('win-score-display');
+
+function hideAllOverlays() {
+  overlayEl.classList.remove('active');
+  gameoverOverlay.classList.remove('active');
+  winOverlay.classList.remove('active');
+}
+
+// ─────────────────────────────────────────────────────────
+//  GAME INIT
+// ─────────────────────────────────────────────────────────
+function pickRandomColour() {
+  // Only pick colours that exist in the current grid
+  const present = new Set();
+  for (const row of grid) for (const c of row) if (c >= 0) present.add(c);
+  const options = present.size > 0 ? [...present] : [0,1,2,3];
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+function startGame(keepWave = false) {
+  if (!keepWave) { wave = 1; score = 0; }
+  _hudScore = _hudWave = _hudBest = -1;
+  createGrid(wave);
+  gridParityOffset = 0;
+  projectile  = null;
+  mousePos    = null;
+  popAnims    = [];
+  floatTexts  = [];
+  currentBubbleColour = pickRandomColour();
+  nextBubbleColour    = pickRandomColour();
+  frameCount = 0;
+  shotCount  = 0;
+  scheduleHUD();
   if (audioUnlocked && !musicSource) startBgMusic();
   state = 'playing';
 }
 
-// ─────────────────────────────────────────────────────────
-//  SPAWN KITTEN
-// ─────────────────────────────────────────────────────────
-function spawnKitten() {
-  const cfg  = waveConfig(wave);
-  const side = Math.random() < 0.5 ? -1 : 1;
-  const x    = side === -1 ? -40 : GAME_W + 40;
-  const y    = 80 + Math.random() * (GAME_H - 200);
-  const isDog = Math.random() < 0.5;
+function endGame() {
+  state = 'gameover';
+  sfxGameOver();
+  stopBgMusic();
+  hsSave('bubble-slumber', score);
+  finalScoreEl.textContent = `SCORE: ${score}`;
+  hsRenderBest('bubble-slumber', 'hs-gameover');
+  gameoverOverlay.classList.add('active');
+}
 
-  kittens.push({
-    x, y,
-    vx:       side * cfg.speed,
-    vy:       0,
-    size:     cfg.size,
-    colorIdx: Math.floor(Math.random() * (isDog ? DOG_COLORS.length : KITTEN_COLORS.length)),
-    hp:       1,
-    frame:    Math.floor(Math.random() * 200),
-    phase: 'approach',
-    isDog,
-    id: Math.random(),
-  });
+function winWave() {
+  state = 'win';
+  sfxWin();
+  winScoreEl.textContent = `SCORE: ${score}`;
+  winOverlay.classList.add('active');
 }
 
 // ─────────────────────────────────────────────────────────
-//  FIRE PROJECTILE
+//  PROJECTILE PHYSICS
 // ─────────────────────────────────────────────────────────
-function fireBottle(dx, dy) {
-  // dx, dy = vector from launcher to drag point (we invert to get launch dir)
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 10) return; // too small a drag
-  const maxSpeed = 18;
-  const speed = Math.min(len * 0.18, maxSpeed);
-  const nx = -dx / len;
-  const ny = -dy / len;
+const BUBBLE_SPEED = 10;
 
-  projectiles.push({
-    x:  LAUNCHER_X,
-    y:  LAUNCHER_Y,
-    vx: nx * speed,
-    vy: ny * speed,
-    angle: 0,
-    spin:  (Math.random() - 0.5) * 0.3,
-    active: true,
+function fireProjectile() {
+  if (projectile) return;
+  const dx = Math.cos(aimAngle);
+  const dy = Math.sin(aimAngle);
+  projectile = {
+    x: SHOOTER_X,
+    y: SHOOTER_Y,
+    vx: dx * BUBBLE_SPEED,
+    vy: dy * BUBBLE_SPEED,
+    colour: currentBubbleColour,
+  };
+  sfxShoot();
+  // Advance the queue — nextBubbleColour becomes current,
+  // new next is picked AFTER landing (in landProjectile) so it
+  // reflects the post-pop grid state. For now set a placeholder.
+  currentBubbleColour = nextBubbleColour;
+  nextBubbleColour    = pickRandomColour(); // preliminary; refreshed after land
+}
+
+function isGridEmpty() {
+  return grid.length === 0 || grid.every(row => row.every(c => c < 0));
+}
+
+function updateProjectile() {
+  if (!projectile) return;
+
+  // If grid is already empty, no need to land — just win immediately
+  if (isGridEmpty()) {
+    projectile = null;
+    winWave();
+    return;
+  }
+
+  projectile.x += projectile.vx;
+  projectile.y += projectile.vy;
+
+  // Bounce off left/right walls
+  const leftWall  = GRID_X;
+  const rightWall = GRID_X + COLS * COL_W;
+  if (projectile.x - R < leftWall)  { projectile.x = leftWall + R;  projectile.vx *= -1; }
+  if (projectile.x + R > rightWall) { projectile.x = rightWall - R; projectile.vx *= -1; }
+
+  // Off the top — snap to top row
+  if (projectile.y - R < GRID_TOP) {
+    landProjectile();
+    return;
+  }
+
+  // Off the bottom — discard silently
+  if (projectile.y > GAME_H + 20) {
+    projectile = null;
+    return;
+  }
+
+  // Check collision with existing bubbles
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < colsInRow(r); c++) {
+      if (grid[r][c] < 0) continue;
+      const pos = bubblePos(r, c);
+      if (Math.hypot(projectile.x - pos.x, projectile.y - pos.y) < R * 1.9) {
+        landProjectile();
+        return;
+      }
+    }
+  }
+}
+
+function landProjectile() {
+  if (!projectile) return;
+  const [r, c] = snapToGrid(projectile.x, projectile.y);
+
+  // Ensure grid has enough rows
+  while (grid.length <= r) {
+    const newRow = grid.length;
+    grid.push(Array(colsInRow(newRow)).fill(-1));
+  }
+
+  // Place bubble — guard against out-of-bounds column
+  const placed = c < colsInRow(r);
+  if (placed) { grid[r][c] = projectile.colour; shotCount++; }
+
+  projectile = null;
+
+  // Check for match — only if bubble was actually placed
+  const group = placed ? findGroup(r, c) : [];
+  if (group.length >= 3) {
+    // Pop the matched group
+    for (const [gr, gc] of group) {
+      const pos = bubblePos(gr, gc);
+      popAnims.push({ x: pos.x, y: pos.y, colIdx: grid[gr][gc], progress: 0 });
+      grid[gr][gc] = -1;
+    }
+    const pts = group.length * 10 * wave;
+    score += pts;
+
+    // Drop any bubbles now disconnected from the ceiling
+    const connected = findConnected();
+    let dropped = 0;
+    for (let gr = 0; gr < grid.length; gr++) {
+      for (let gc = 0; gc < colsInRow(gr); gc++) {
+        if (grid[gr][gc] >= 0 && !connected.has(gr + ',' + gc)) {
+          const pos = bubblePos(gr, gc);
+          popAnims.push({ x: pos.x, y: pos.y, colIdx: grid[gr][gc], progress: 0 });
+          grid[gr][gc] = -1;
+          dropped++;
+        }
+      }
+    }
+
+    // Score and feedback — escalate based on total cleared
+    const totalCleared = group.length + dropped;
+    const dropPts = dropped * 5 * wave;
+    score += dropPts;
+
+    if (totalCleared >= 8) {
+      sfxCombo();
+      addFloatText(SHOOTER_X, SHOOTER_Y - 90, `LUCID! +${pts + dropPts}`, '#ffcc44');
+    } else if (dropped > 0) {
+      sfxDrop();
+      sfxPop();
+      addFloatText(SHOOTER_X, SHOOTER_Y - 70, `AWOKEN! +${pts + dropPts}`, '#44ddaa');
+    } else {
+      sfxPop();
+      addFloatText(SHOOTER_X, SHOOTER_Y - 60, `+${pts}`, '#cc88ff');
+    }
+
+    scheduleHUD();
+
+    // Refresh next bubble to only show colours still in the grid
+    nextBubbleColour = pickRandomColour();
+
+    // Remove empty trailing rows
+    while (grid.length && grid[grid.length - 1].every(c => c < 0)) grid.pop();
+
+    if (isGridEmpty()) { winWave(); return; }
+
+  } else {
+    while (grid.length && grid[grid.length - 1].every(c => c < 0)) grid.pop();
+    if (isGridEmpty()) { winWave(); return; }
+  }
+
+  // Danger check
+  for (let gr = 0; gr < grid.length; gr++) {
+    for (let gc = 0; gc < colsInRow(gr); gc++) {
+      if (grid[gr][gc] >= 0) {
+        if (bubblePos(gr, gc).y + R >= DANGER_Y) { endGame(); return; }
+      }
+    }
+  }
+
+  // Push a new row every 10 shots
+  if (shotCount % 10 === 0) pushGridDown();
+}
+
+function pushGridDown() {
+  // Decrement parity offset so existing rows keep their visual x-position.
+  // y-position is handled naturally by row index — unshift moves all existing
+  // rows from index n to n+1, which shifts them down by exactly one ROW_H.
+  gridParityOffset--;
+
+  const newRow = Array(colsInRow(0)).fill(0).map(() => {
+    const maxCol = Math.min(1 + wave, NUM_COLOURS);
+    return Math.floor(Math.random() * maxCol);
   });
+  grid.unshift(newRow);
+
+  // Danger check
+  let dangerTriggered = false;
+  outer: for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < colsInRow(r); c++) {
+      if (grid[r][c] >= 0 && bubblePos(r, c).y + R >= DANGER_Y) {
+        dangerTriggered = true;
+        break outer;
+      }
+    }
+  }
+  if (dangerTriggered) { endGame(); return; }
 }
 
 // ─────────────────────────────────────────────────────────
 //  UPDATE
 // ─────────────────────────────────────────────────────────
 function update() {
-  frame++;
+  if (state !== 'playing') return;
+  frameCount++;
+  updateProjectile();
 
-  // ── Wave management
-  if (!betweenWaves) {
-    if (waveKittensLeft > 0) {
-      nextSpawnIn--;
-      if (nextSpawnIn <= 0) {
-        spawnKitten();
-        waveKittensLeft--;
-        nextSpawnIn = waveConfig(wave).spawnRate;
-      }
-    } else if (kittens.length === 0) {
-      // All kittens cleared → start between-wave pause
-      sfxWaveClear();
-      betweenWaves = true;
-      betweenTimer = 120; // 2 s at 60fps
-      wave++;
-    }
-  } else {
-    betweenTimer--;
-    if (betweenTimer <= 0) {
-      betweenWaves = false;
-      const cfg = waveConfig(wave);
-      waveKittensLeft = cfg.count;
-      nextSpawnIn = cfg.spawnRate;
-    }
+  // Persistent win check — runs every frame so it catches any path
+  // that empties the grid, not just the ones inside landProjectile
+  if (isGridEmpty() && !projectile) {
+    winWave();
+    return;
   }
 
-  // ── Update kittens
-  for (const k of kittens) {
-    k.frame++;
-
-    // Simple AI: head toward launcher
-    const tdx = LAUNCHER_X - k.x;
-    const tdy = LAUNCHER_Y - k.y;
-    const dist = Math.sqrt(tdx * tdx + tdy * tdy);
-    const spd  = waveConfig(wave).speed;
-
-    if (dist > 1) {
-      k.vx += (tdx / dist) * spd * 0.04;
-      k.vy += (tdy / dist) * spd * 0.04;
-    }
-
-    // Cap speed
-    const kspd = Math.sqrt(k.vx * k.vx + k.vy * k.vy);
-    if (kspd > spd * 1.6) {
-      k.vx = (k.vx / kspd) * spd * 1.6;
-      k.vy = (k.vy / kspd) * spd * 1.6;
-    }
-
-    k.x += k.vx;
-    k.y += k.vy;
+  // Update aim angle toward current mouse/touch position
+  if (mousePos) {
+    const dx = mousePos.x - SHOOTER_X;
+    const dy = mousePos.y - SHOOTER_Y;
+    let angle = Math.atan2(dy, dx);
+    if (angle > -0.15)           angle = -0.15;
+    if (angle < -Math.PI + 0.15) angle = -Math.PI + 0.15;
+    aimAngle = angle;
   }
 
-  // ── Kittens reaching launcher → lose a life
-  kittens = kittens.filter(k => {
-    const dx = k.x - LAUNCHER_X;
-    const dy = k.y - LAUNCHER_Y;
-    if (Math.sqrt(dx * dx + dy * dy) < 36) {
-      lives--;
-      sfxLifeLost();
-      spawnParticles(k.x, k.y, '#ff4466');
-      addFloatText(k.x, k.y - 20, '-1 LIFE', '#ff4466');
-      updateHUD();
-      if (lives <= 0) endGame();
-      return false;
-    }
-    return true;
-  });
+  // Pop animations
+  popAnims = popAnims.filter(p => p.progress < 1);
+  for (const p of popAnims) p.progress += 0.07;
 
-  // ── Update projectiles
-  for (const p of projectiles) {
-    p.x    += p.vx;
-    p.y    += p.vy;
-    p.angle += p.spin;
-    // Slight gravity
-    p.vy   += 0.18;
-  }
-
-  // ── Projectile–kitten collision
-  for (const p of projectiles) {
-    if (!p.active) continue;
-    for (const k of kittens) {
-      const dx = p.x - k.x;
-      const dy = p.y - k.y;
-      if (Math.sqrt(dx * dx + dy * dy) < k.size) {
-        k.hp--;
-        p.active = false;
-        sfxKittenHit();
-        spawnParticles(p.x, p.y, '#e8f4f8');
-        if (k.hp <= 0) {
-          const pts = 10 * wave;
-          score += pts;
-          spawnParticles(k.x, k.y, k.isDog ? DOG_COLORS[k.colorIdx] : KITTEN_COLORS[k.colorIdx]);
-          addFloatText(k.x, k.y - 30, `+${pts}`, '#ff69b4');
-          updateHUD();
-        }
-        break;
-      }
-    }
-  }
-
-  // Remove dead kittens and off-screen / inactive projectiles
-  kittens     = kittens.filter(k => k.hp > 0);
-  projectiles = projectiles.filter(p =>
-    p.active &&
-    p.x > -50 && p.x < GAME_W + 50 &&
-    p.y > -50 && p.y < GAME_H + 200
-  );
-
-  // ── Particles & float texts
-  updateParticles();
+  // Float texts
   floatTexts = floatTexts.filter(f => f.life > 0);
-  for (const f of floatTexts) {
-    f.y   -= 0.8;
-    f.life -= 0.02;
-  }
+  for (const f of floatTexts) { f.y -= 0.8; f.life -= 0.018; }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -856,250 +967,144 @@ function update() {
 function draw() {
   drawBackground();
 
-  // ── Animals
-  for (const k of kittens) {
-    if (k.isDog) {
-      drawDog(k.x, k.y, k.size, k.colorIdx, k.frame);
-    } else {
-      drawKitten(k.x, k.y, k.size, k.colorIdx, k.frame);
+  if (state !== 'playing') return;
+
+  // Grid bubbles
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < colsInRow(r); c++) {
+      if (grid[r][c] >= 0) {
+        const pos = bubblePos(r, c);
+        drawEmailBubble(pos.x, pos.y, R, grid[r][c]);
+      }
     }
   }
 
-  // ── Projectiles
-  for (const p of projectiles) {
-    drawProjectileBottle(p.x, p.y, p.angle);
+  // Pop animations
+  for (const p of popAnims) {
+    drawBurst(p.x, p.y, p.colIdx, p.progress);
   }
 
-  // ── Particles
-  drawParticles();
-
-  // ── Launcher (milk bottle at bottom)
-  if (isDragging && dragStart && dragCurrent) {
-    drawAimGuide();
+  // Aim guide — shown whenever we know where the mouse is
+  if (mousePos) {
+    ctx.save();
+    ctx.setLineDash([6, 10]);
+    ctx.strokeStyle = '#cc88ff88';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    let px = SHOOTER_X, py = SHOOTER_Y;
+    let vx = Math.cos(aimAngle) * 8, vy = Math.sin(aimAngle) * 8;
+    ctx.moveTo(px, py);
+    for (let i = 0; i < 40; i++) {
+      px += vx; py += vy;
+      if (px - R < GRID_X)             { px = GRID_X + R;              vx *= -1; }
+      if (px + R > GRID_X + COLS*COL_W) { px = GRID_X + COLS*COL_W - R; vx *= -1; }
+      ctx.lineTo(px, py);
+      if (py < GRID_TOP + ROW_H * 2) break;
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   }
-  drawBottle(LAUNCHER_X, LAUNCHER_Y, 0, 1);
 
-  // ── Aim line while dragging
-  if (isDragging && dragStart && dragCurrent) {
-    // Already drawn in drawAimGuide()
+  // Next bubble preview (top-left)
+  ctx.save();
+  ctx.font = '10px "Courier New", monospace';
+  ctx.fillStyle = '#cc88ffaa';
+  ctx.textAlign = 'left';
+  ctx.fillText('DREAM', 12, SHOOTER_Y - 28);
+  drawEmailBubble(28, SHOOTER_Y - 8, R * 0.65, nextBubbleColour);
+  ctx.restore();
+
+  // Current bubble on shooter
+  drawEmailBubble(SHOOTER_X, SHOOTER_Y - 10, R, currentBubbleColour);
+
+  // Kobie
+  drawKobie(SHOOTER_X, SHOOTER_Y + 30, aimAngle);
+
+  // Projectile in flight
+  if (projectile) {
+    drawEmailBubble(projectile.x, projectile.y, R, projectile.colour);
   }
 
-  // ── Float texts
+  // Float texts
   for (const f of floatTexts) {
-    ctx.globalAlpha = f.life;
-    ctx.fillStyle   = f.color;
-    ctx.font        = 'bold 18px "Courier New", monospace';
+    const alpha = Math.max(0, Math.min(1, f.life));
+    const hex   = Math.round(alpha * 255).toString(16).padStart(2, '0');
+    ctx.save();
+    ctx.font        = 'bold 16px "Courier New", monospace';
     ctx.textAlign   = 'center';
-    ctx.shadowColor = f.color;
-    ctx.shadowBlur  = 8;
+    ctx.fillStyle   = f.color + hex;
+    ctx.shadowColor = f.color + hex;
+    ctx.shadowBlur  = 6;
     ctx.fillText(f.text, f.x, f.y);
-    ctx.shadowBlur  = 0;
-    ctx.globalAlpha = 1;
-  }
-
-  // ── Between-wave banner
-  if (betweenWaves) {
-    ctx.fillStyle = '#ff69b4';
-    ctx.font      = 'bold 28px "Courier New", monospace';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#ff69b4';
-    ctx.shadowBlur  = 20;
-    ctx.fillText(`WAVE ${wave} INCOMING!`, GAME_W / 2, GAME_H / 2);
-    ctx.shadowBlur  = 0;
+    ctx.restore();
   }
 }
-
-function drawAimGuide() {
-  const dx = dragCurrent.x - dragStart.x;
-  const dy = dragCurrent.y - dragStart.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 5) return;
-
-  // Direction of fire (inverse of drag)
-  const nx = -dx / len;
-  const ny = -dy / len;
-  const speed = Math.min(len * 0.18, 18);
-
-  // Draw dotted trajectory
-  ctx.setLineDash([4, 8]);
-  ctx.strokeStyle = '#ff69b488';
-  ctx.lineWidth   = 1.5;
-  ctx.beginPath();
-
-  let px = LAUNCHER_X;
-  let py = LAUNCHER_Y;
-  let pvx = nx * speed;
-  let pvy = ny * speed;
-  ctx.moveTo(px, py);
-  for (let i = 0; i < 28; i++) {
-    px  += pvx;
-    py  += pvy;
-    pvy += 0.18;
-    ctx.lineTo(px, py);
-    if (py > GAME_H + 20) break;
-  }
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Drag circle at drag point
-  ctx.strokeStyle = '#ff69b4';
-  ctx.lineWidth   = 2;
-  ctx.beginPath();
-  ctx.arc(dragStart.x + dx, dragStart.y + dy, 14, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Power indicator
-  const power = Math.min(len / 120, 1);
-  ctx.fillStyle = `hsl(${330 - power * 60}, 100%, 65%)`;
-  ctx.font = '11px "Courier New", monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(`PWR ${Math.round(power * 100)}%`, dragStart.x + dx, dragStart.y + dy - 22);
-}
-
-// ─────────────────────────────────────────────────────────
-//  FLOAT TEXT
-// ─────────────────────────────────────────────────────────
-function addFloatText(x, y, text, color) {
-  floatTexts.push({ x, y, text, color, life: 1 });
-}
-
-// ─────────────────────────────────────────────────────────
-//  HUD — DOM writes run on their own rAF, completely
-//  separate from the canvas draw loop so they can never
-//  trigger a compositor flush mid-frame.
-// ─────────────────────────────────────────────────────────
-let _hudScore = -1, _hudWave = -1, _hudLives = -1, _hudBest = -1;
-let _hudPending = false;
-
-function scheduleHUD() {
-  if (_hudPending) return;
-  _hudPending = true;
-  requestAnimationFrame(() => {
-    _hudPending = false;
-    const best = hsBest('hungry-hungry-kittens');
-    if (score !== _hudScore) { scoreEl.textContent = score; _hudScore = score; }
-    if (wave  !== _hudWave)  { waveEl.textContent  = wave;  _hudWave  = wave;  }
-    if (best  !== _hudBest)  { bestEl.textContent  = best;  _hudBest  = best;  }
-    if (lives !== _hudLives) {
-      livesEl.textContent = '[ ' + 'I '.repeat(Math.max(0, lives)).trimEnd() + ' ]';
-      _hudLives = lives;
-    }
-  });
-}
-
-function updateHUD() { scheduleHUD(); }
 
 // ─────────────────────────────────────────────────────────
 //  GAME LOOP
 // ─────────────────────────────────────────────────────────
-function endGame() {
-  state = 'gameover';
-  sfxGameOver();
-  stopBgMusic();
-  hsSave('hungry-hungry-kittens', score);
-  finalScoreDisplay.textContent = `SCORE: ${score}`;
-  hsRenderBest('hungry-hungry-kittens', 'hs-gameover');
-  gameoverOverlay.classList.add('active');
-}
-
-let lastTime = 0;
-function loop(ts) {
+function loop() {
   requestAnimationFrame(loop);
-  // Fixed 60 fps step (simple)
-  if (state === 'playing') {
-    update();
-    draw();
-  }
+  update();
+  draw();
 }
 requestAnimationFrame(loop);
 
 // ─────────────────────────────────────────────────────────
-//  INPUT — unified mouse + touch → canvas coords
+//  INPUT — click/tap to fire toward that point
 // ─────────────────────────────────────────────────────────
-function canvasPoint(clientX, clientY) {
-  const rect  = canvasRect || canvas.getBoundingClientRect();
-  const scaleX = GAME_W / rect.width;
-  const scaleY = GAME_H / rect.height;
-  return {
-    x: (clientX - rect.left) * scaleX,
-    y: (clientY - rect.top)  * scaleY,
-  };
+function onPointerMove(clientX, clientY) {
+  mousePos = canvasPoint(clientX, clientY);
 }
 
-function onPointerDown(clientX, clientY) {
-  if (state !== 'playing') return;
-  const pt = canvasPoint(clientX, clientY);
-  // Only start drag near the launcher area (bottom third)
-  isDragging   = true;
-  dragStart    = { x: LAUNCHER_X, y: LAUNCHER_Y };
-  dragCurrent  = pt;
+function onPointerLeave() {
+  mousePos = null;
 }
 
-function onPointerDown(clientX, clientY) {
+function onFire(clientX, clientY) {
   unlockAudio();
   if (state !== 'playing') return;
-  const pt = canvasPoint(clientX, clientY);
-  // Only start drag near the launcher area (bottom third)
-  isDragging   = true;
-  dragStart    = { x: LAUNCHER_X, y: LAUNCHER_Y };
-  dragCurrent  = pt;
-}
-
-function onPointerMove(clientX, clientY) {
-  if (!isDragging) return;
-  dragCurrent = canvasPoint(clientX, clientY);
-}
-
-function onPointerUp(clientX, clientY) {
-  if (!isDragging) return;
-  isDragging = false;
-  if (dragStart && dragCurrent) {
-    const dx = dragCurrent.x - dragStart.x;
-    const dy = dragCurrent.y - dragStart.y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len >= 10) sfxFire();
-    fireBottle(dx, dy);
-  }
-  dragStart   = null;
-  dragCurrent = null;
+  // Update aim to click point then fire immediately
+  mousePos = canvasPoint(clientX, clientY);
+  const dx = mousePos.x - SHOOTER_X;
+  const dy = mousePos.y - SHOOTER_Y;
+  let angle = Math.atan2(dy, dx);
+  if (angle > -0.15)          angle = -0.15;
+  if (angle < -Math.PI + 0.15) angle = -Math.PI + 0.15;
+  aimAngle = angle;
+  fireProjectile();
 }
 
 // Mouse
-canvas.addEventListener('mousedown',  e => { e.preventDefault(); onPointerDown(e.clientX, e.clientY); });
 canvas.addEventListener('mousemove',  e => { e.preventDefault(); onPointerMove(e.clientX, e.clientY); });
-canvas.addEventListener('mouseup',    e => { e.preventDefault(); onPointerUp(e.clientX, e.clientY); });
-canvas.addEventListener('mouseleave', e => { onPointerUp(e.clientX, e.clientY); });
+canvas.addEventListener('mouseleave', () => onPointerLeave());
+canvas.addEventListener('click',      e => { e.preventDefault(); onFire(e.clientX, e.clientY); });
 
-// Touch
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.touches[0];
-  onPointerDown(t.clientX, t.clientY);
-}, { passive: false });
-
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  const t = e.touches[0];
-  onPointerMove(t.clientX, t.clientY);
-}, { passive: false });
-
-canvas.addEventListener('touchend', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  onPointerUp(t.clientX, t.clientY);
-}, { passive: false });
+// Touch — touchmove updates aim preview, touchend fires
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); const t = e.touches[0]; onPointerMove(t.clientX, t.clientY); }, { passive: false });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); const t = e.touches[0]; onPointerMove(t.clientX, t.clientY); }, { passive: false });
+canvas.addEventListener('touchend',   e => { e.preventDefault(); const t = e.changedTouches[0]; onFire(t.clientX, t.clientY); }, { passive: false });
 
 // ─────────────────────────────────────────────────────────
 //  OVERLAY BUTTONS
 // ─────────────────────────────────────────────────────────
 startBtn.addEventListener('click', () => {
   unlockAudio();
-  overlay.classList.remove('active');
-  startGame();
+  hideAllOverlays();
+  startGame(false);
 });
 
 restartBtn.addEventListener('click', () => {
   unlockAudio();
-  gameoverOverlay.classList.remove('active');
-  startGame();
+  hideAllOverlays();
+  startGame(false);
+});
+
+nextwaveBtn.addEventListener('click', () => {
+  unlockAudio();
+  hideAllOverlays();
+  wave++;
+  startGame(true);
 });
