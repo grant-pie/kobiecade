@@ -1027,8 +1027,11 @@ function draw() {
 // ─────────────────────────────────────────────────────────
 //  GAME LOOP
 // ─────────────────────────────────────────────────────────
-function loop() {
+let _lastTs = 0;
+function loop(ts = 0) {
   requestAnimationFrame(loop);
+  if (ts - _lastTs < 16.5) return; // cap at ~60fps
+  _lastTs = ts;
   update();
   draw();
 }

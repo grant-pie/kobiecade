@@ -15,19 +15,18 @@ let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
 function resizeCanvas() {
   const vw = window.innerWidth, vh = window.innerHeight;
-  const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const reservedTop   = 40;
-  const reservedBelow = isTouch ? 60 : 36;
-  const availH = vh - reservedTop - reservedBelow;
-  const scale = Math.min(vw / GAME_W, availH / GAME_H);
+  const reserved = 36;
+  const scale = Math.min(vw / GAME_W, (vh - reserved) / GAME_H);
   const w = Math.floor(GAME_W * scale), h = Math.floor(GAME_H * scale);
-  const x = Math.floor((vw - w) / 2), y = reservedTop + Math.floor((availH - h) / 2);
-  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
-  canvas.style.position = 'fixed'; canvas.style.left = x + 'px'; canvas.style.top = y + 'px';
-  const r = document.documentElement.style;
-  r.setProperty('--canvas-left', x + 'px'); r.setProperty('--canvas-top', y + 'px');
-  r.setProperty('--canvas-width', w + 'px'); r.setProperty('--canvas-height', h + 'px');
-  _rszW = w; _rszH = h; _rszX = x; _rszY = y;
+  const x = Math.floor((vw - w) / 2), y = Math.floor((vh - reserved - h) / 2);
+  if (w !== _rszW || h !== _rszH || x !== _rszX || y !== _rszY) {
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    canvas.style.position = 'fixed'; canvas.style.left = x + 'px'; canvas.style.top = y + 'px';
+    const r = document.documentElement.style;
+    r.setProperty('--canvas-left', x + 'px'); r.setProperty('--canvas-top', y + 'px');
+    r.setProperty('--canvas-width', w + 'px'); r.setProperty('--canvas-height', h + 'px');
+    _rszW = w; _rszH = h; _rszX = x; _rszY = y;
+  }
   if (canvas.width !== GAME_W) canvas.width = GAME_W;
   if (canvas.height !== GAME_H) canvas.height = GAME_H;
 }
@@ -53,12 +52,7 @@ function getAudioCtx() {
 
 fetch('Assets/music.mp3').then(r => r.arrayBuffer())
   .then(buf => { const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); return ac.decodeAudioData(buf); })
-  .then(d => {
-    musicBuffer = d;
-    if (audioUnlocked && !musicSource) startBgMusic();
-    const btn = document.getElementById('start-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'START GAME'; }
-  }).catch(() => {});
+  .then(d => { musicBuffer = d; }).catch(() => {});
 
 function startBgMusic() {
   const ac = getAudioCtx(); if (!musicBuffer) return;
@@ -70,7 +64,7 @@ function startBgMusic() {
 function stopBgMusic() { if (musicSource) { try { musicSource.stop(); } catch(e) {} musicSource = null; } }
 function unlockAudio() {
   if (audioUnlocked) return; audioUnlocked = true;
-  getAudioCtx().resume().catch(() => {});
+  getAudioCtx().resume().then(startBgMusic).catch(() => {});
 }
 document.addEventListener('keydown', unlockAudio, { once: true });
 
@@ -376,10 +370,6 @@ const overlayEl       = document.getElementById('overlay');
 const gameoverOverlay = document.getElementById('gameover-overlay');
 const finalScoreEl    = document.getElementById('final-score-display');
 const startBtn        = document.getElementById('start-btn');
-
-// Disable start button until audio is loaded
-startBtn.disabled    = true;
-startBtn.textContent = 'LOADING...';
 const restartBtn      = document.getElementById('restart-btn');
 
 function hideAllOverlays() { overlayEl.classList.remove('active'); gameoverOverlay.classList.remove('active'); }
@@ -660,8 +650,11 @@ canvas.addEventListener('touchstart', e => { e.preventDefault(); unlockAudio(); 
 // ─────────────────────────────────────────────────────────
 //  GAME LOOP
 // ─────────────────────────────────────────────────────────
-function loop() {
+let _lastTs = 0;
+function loop(ts = 0) {
   requestAnimationFrame(loop);
+  if (ts - _lastTs < 16.5) return; // cap at ~60fps
+  _lastTs = ts;
   update();
   draw();
 }

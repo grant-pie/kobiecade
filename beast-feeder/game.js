@@ -1012,9 +1012,11 @@ function endGame() {
 }
 
 let lastTime = 0;
-function loop(ts) {
+let _lastTs = 0;
+function loop(ts = 0) {
   requestAnimationFrame(loop);
-  // Fixed 60 fps step (simple)
+  if (ts - _lastTs < 16.5) return; // cap at ~60fps
+  _lastTs = ts;
   if (state === 'playing') {
     update();
     draw();
