@@ -67,7 +67,7 @@ fetch('Assets/music.mp3')
     const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     return ac.decodeAudioData(buf);
   })
-  .then(d => { musicBuffer = d; })
+  .then(d => { musicBuffer = d; if (audioUnlocked && !musicSource) startBgMusic(); })
   .catch(() => {});
 
 function startBgMusic() {
@@ -91,7 +91,7 @@ function stopBgMusic() {
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  const ac = getAudioCtx(); ac.resume().then(() => { if (musicBuffer && !musicSource) startBgMusic(); }).catch(() => {});
+  getAudioCtx().resume().catch(() => {});
 }
 document.addEventListener('keydown', unlockAudio, { once: true });
 
