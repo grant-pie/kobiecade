@@ -15,26 +15,26 @@ let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
 function resizeCanvas() {
   const vw = window.innerWidth, vh = window.innerHeight;
-  const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const reservedTop   = 40;
-  const reservedBelow = isTouch ? 60 : 36;
-  const availH = vh - reservedTop - reservedBelow;
-  const scale = Math.min(vw / GAME_W, availH / GAME_H);
+  const reservedBelow = 36;
+  const scale = Math.min(vw / GAME_W, (vh - reservedBelow) / GAME_H);
   const w = Math.floor(GAME_W * scale);
   const h = Math.floor(GAME_H * scale);
   const x = Math.floor((vw - w) / 2);
-  const y = reservedTop + Math.floor((availH - h) / 2);
-  canvas.style.width    = w + 'px';
-  canvas.style.height   = h + 'px';
-  canvas.style.position = 'fixed';
-  canvas.style.left     = x + 'px';
-  canvas.style.top      = y + 'px';
-  const r = document.documentElement.style;
-  r.setProperty('--canvas-left',   x + 'px');
-  r.setProperty('--canvas-top',    y + 'px');
-  r.setProperty('--canvas-width',  w + 'px');
-  r.setProperty('--canvas-height', h + 'px');
-  _rszW = w; _rszH = h; _rszX = x; _rszY = y;
+  const y = Math.floor((vh - reservedBelow - h) / 2);
+
+  if (w !== _rszW || h !== _rszH || x !== _rszX || y !== _rszY) {
+    canvas.style.width    = w + 'px';
+    canvas.style.height   = h + 'px';
+    canvas.style.position = 'fixed';
+    canvas.style.left     = x + 'px';
+    canvas.style.top      = y + 'px';
+    const r = document.documentElement.style;
+    r.setProperty('--canvas-left',   x + 'px');
+    r.setProperty('--canvas-top',    y + 'px');
+    r.setProperty('--canvas-width',  w + 'px');
+    r.setProperty('--canvas-height', h + 'px');
+    _rszW = w; _rszH = h; _rszX = x; _rszY = y;
+  }
   if (canvas.width  !== GAME_W) canvas.width  = GAME_W;
   if (canvas.height !== GAME_H) canvas.height = GAME_H;
 }
@@ -69,8 +69,18 @@ fetch('Assets/music.mp3')
     const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     return ac.decodeAudioData(buf);
   })
-  .then(d => { musicBuffer = d; if (audioUnlocked && !musicSource) startBgMusic(); })
-  .catch(() => {});
+  .then(d => {
+    musicBuffer = d;
+    if (audioUnlocked && !musicSource) startBgMusic();
+    // Re-enable start button now that audio is ready
+    const btn = document.getElementById('start-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'ENTER DREAMWORLD'; }
+  })
+  .catch(() => {
+    // Even on failure, unblock the button
+    const btn = document.getElementById('start-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'ENTER DREAMWORLD'; }
+  });
 
 function startBgMusic() {
   const ac = getAudioCtx();
@@ -93,7 +103,7 @@ function stopBgMusic() {
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  getAudioCtx().resume().catch(() => {});
+  getAudioCtx().resume().then(startBgMusic).catch(() => {});
 }
 document.addEventListener('keydown', unlockAudio, { once: true });
 
@@ -689,6 +699,10 @@ const gameoverOverlay  = document.getElementById('gameover-overlay');
 const winOverlay       = document.getElementById('win-overlay');
 const startBtn         = document.getElementById('start-btn');
 const restartBtn       = document.getElementById('restart-btn');
+
+// Disable start button until audio is loaded
+startBtn.disabled    = true;
+startBtn.textContent = 'LOADING...';
 const nextwaveBtn      = document.getElementById('nextwave-btn');
 const finalScoreEl     = document.getElementById('final-score-display');
 const winScoreEl       = document.getElementById('win-score-display');

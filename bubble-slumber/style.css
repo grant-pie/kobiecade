@@ -41,8 +41,6 @@ html, body {
 
 canvas {
   display: block;
-  max-width: 100vw;
-  max-height: 100vh;
   border: 2px solid #cc88ff;
   box-shadow: 0 0 30px #cc88ff40;
   image-rendering: -webkit-optimize-contrast;
@@ -155,6 +153,18 @@ canvas {
 }
 .menu-btn:active {
   transform: translateY(2px) scale(0.97);
+}
+
+.menu-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  animation: loading-pulse 1s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.25; }
 }
 
 /* ── HIGH SCORES TABLE ───────────────────────────────── */
