@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bubble Slumber — KobieCade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a href="../index.html" class="back-btn" aria-label="Back to KobieCade">&#9664; KOBIECADE</a>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="480" height="700"></canvas>
+
+    <div id="ui">
+      <span>SCORE: <b id="score">0</b></span>
+      <span>BEST: <b id="best">0</b></span>
+      <span>WAVE: <b id="wave">1</b></span>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay active">
+    <div class="overlay-box">
+      <div class="overlay-title">BUBBLE SLUMBER</div>
+      <div class="overlay-sub">Kobie is fast asleep in the dreamworld...</div>
+      <div class="how-to">
+        <p>Move your mouse to aim</p>
+        <p>Click or tap to fire a dream bubble!</p>
+        <p>Match 3 or more to pop them</p>
+        <p>Every 10 shots a new row appears!</p>
+        <p>Wake up before the dreams take over!</p>
+      </div>
+      <button id="start-btn" class="menu-btn">ENTER DREAMWORLD</button>
+    </div>
+  </div>
+
+  <div id="gameover-overlay" class="overlay">
+    <div class="overlay-box">
+      <div class="overlay-title">STILL DREAMING...</div>
+      <div class="overlay-sub">The dreams took over — Kobie is still asleep!</div>
+      <div id="final-score-display" class="final-score">SCORE: 0</div>
+      <div id="hs-gameover"></div>
+      <button id="restart-btn" class="menu-btn">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="win-overlay" class="overlay">
+    <div class="overlay-box">
+      <div class="overlay-title">WIDE AWAKE!</div>
+      <div class="overlay-sub">Kobie burst free from the dreamworld!</div>
+      <div id="win-score-display" class="final-score">SCORE: 0</div>
+      <button id="nextwave-btn" class="menu-btn">DEEPER DREAMS</button>
+    </div>
+  </div>
+
+  <script src="highscores.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KobieCade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="arcade-wrap">
+
+    <header class="arcade-header">
+      <div class="header-scanline"></div>
+      <div class="coin-light coin-left"></div>
+      <div class="coin-light coin-right"></div>
+      <h1 class="arcade-title">
+        <span class="title-k">K</span><span class="title-obie">OBIE</span><span class="title-cade">CADE</span>
+      </h1>
+
+    </header>
+
+    <main class="game-grid">
+
+      <a href="bubble-slumber/index.html" class="game-card" id="card-todos">
+        <div class="card-screen">
+          <canvas class="card-preview" id="preview-todos" width="200" height="150"></canvas>
+        </div>
+        <div class="card-bezel">
+          <div class="card-lights">
+            <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+          </div>
+          <h2 class="card-title">BUBBLE SLUMBER</h2>
+          <p class="card-desc">Kobie is lost in the dreamworld! Pop dream bubbles to wake her up before the dreams take over.</p>
+          <div class="card-meta">
+            <span class="tag">BUBBLE SHOOTER</span>
+          </div>
+          <div class="card-btn">PLAY NOW</div>
+        </div>
+      </a>
+
+      <a href="beast-feeder/index.html" class="game-card" id="card-kittens">
+        <div class="card-screen">
+          <canvas class="card-preview" id="preview-kittens" width="200" height="150"></canvas>
+        </div>
+        <div class="card-bezel">
+          <div class="card-lights">
+            <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+          </div>
+          <h2 class="card-title">BEAST FEEDER</h2>
+          <p class="card-desc">The cats and dogs are swarming Kobie! Drag and throw biscuits to feed them before they overrun her!</p>
+          <div class="card-meta">
+            <span class="tag">SLINGSHOT</span>
+          </div>
+          <div class="card-btn">PLAY NOW</div>
+        </div>
+      </a>
+
+      <a href="coffee-rush/index.html" class="game-card" id="card-coffee">
+        <div class="card-screen">
+          <canvas class="card-preview" id="preview-coffee" width="200" height="150"></canvas>
+        </div>
+        <div class="card-bezel">
+          <div class="card-lights">
+            <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+          </div>
+          <h2 class="card-title">KOBIE'S COFFEE RUSH</h2>
+          <p class="card-desc">Help Kobie to get her fix! Catch the coffee before it hits the floor! Dodge the bad stuff or it's game over.</p>
+          <div class="card-meta">
+            <span class="tag">CATCHER</span>
+          </div>
+          <div class="card-btn">PLAY NOW</div>
+        </div>
+      </a>
+
+      <a href="colour-capture/index.html" class="game-card" id="card-colour">
+        <div class="card-screen">
+          <canvas class="card-preview" id="preview-colour" width="200" height="150"></canvas>
+        </div>
+        <div class="card-bezel">
+          <div class="card-lights">
+            <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+          </div>
+          <h2 class="card-title">COLOUR CAPTURE</h2>
+          <p class="card-desc">Kobie's on a colour photography hunt! Tap the right coloured objects before time runs out.</p>
+          <div class="card-meta">
+            <span class="tag">REACTION</span>
+          </div>
+          <div class="card-btn">PLAY NOW</div>
+        </div>
+      </a>
+
+    </main>
+
+    <section class="hs-section">
+      <h2 class="hs-section-title">HALL OF FAME</h2>
+      <div class="hs-panels">
+        <div class="hs-panel">
+          <div class="hs-panel-label">BUBBLE SLUMBER</div>
+          <div id="hs-landing-todos"></div>
+        </div>
+        <div class="hs-panel">
+          <div class="hs-panel-label">BEAST FEEDER</div>
+          <div id="hs-landing-kittens"></div>
+        </div>
+        <div class="hs-panel">
+          <div class="hs-panel-label">COFFEE RUSH</div>
+          <div id="hs-landing-coffee"></div>
+        </div>
+        <div class="hs-panel">
+          <div class="hs-panel-label">COLOUR CAPTURE</div>
+          <div id="hs-landing-colour"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="arcade-footer">
+      <span>© KOBIECADE</span>
+      <span class="footer-dot">◆</span>
+      <span>ALL RIGHTS RESERVED</span>
+    </footer>
+
+  </div>
+
+  <script src="highscores.js"></script>
+  <script src="landing.js"></script>
+</body>
+</html>

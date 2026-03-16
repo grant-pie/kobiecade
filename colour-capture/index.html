@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Colour Capture — KobieCade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a href="../index.html" class="back-btn" aria-label="Back to KobieCade">&#9664; KOBIECADE</a>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+    <div id="ui">
+      <span>SCORE: <b id="score">0</b></span>
+      <span>BEST: <b id="best">0</b></span>
+      <span>LIVES: <b id="lives">[ I I I ]</b></span>
+    </div>
+  </div>
+
+  <!-- Start overlay -->
+  <div id="overlay" class="overlay active">
+    <div class="overlay-box">
+      <div class="overlay-title">COLOUR CAPTURE</div>
+      <div class="overlay-sub">Kobie's colour photography hunt!</div>
+      <div class="how-to">
+        <p>A target colour is shown at the top</p>
+        <p>Tap matching coloured objects to score</p>
+        <p>❌ Wrong tap loses a life</p>
+        <p>❌ Missed items loses a life</p>
+      </div>
+      <button id="start-btn" class="menu-btn">START GAME</button>
+    </div>
+  </div>
+
+  <!-- Game over overlay -->
+  <div id="gameover-overlay" class="overlay">
+    <div class="overlay-box">
+      <div class="overlay-title">FILM USED UP!</div>
+      <div id="final-score-display" class="final-score">SCORE: 0</div>
+      <div id="hs-gameover"></div>
+      <button id="restart-btn" class="menu-btn">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <script src="highscores.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

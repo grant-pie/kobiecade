@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Beast Feeder — KobieCade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a href="../index.html" class="back-btn" aria-label="Back to KobieCade" style="touch-action:auto;z-index:1001">&#9664; KOBIECADE</a>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="ui">
+      <span>SCORE: <b id="score">0</b></span>
+      <span>BEST: <b id="best">0</b></span>
+      <span>WAVE: <b id="wave">1</b></span>
+      <span>LIVES: <b id="lives">[ I I I ]</b></span>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay active">
+    <div class="overlay-box">
+      <div class="overlay-title">BEAST FEEDER</div>
+      <div class="overlay-sub">The cats and dogs are hungry</div>
+      <div class="how-to">
+        <p>Drag and release to throw biscuits</p>
+        <p>Feed the animals before they reach you!</p>
+        <p>Don't let them get too close!</p>
+      </div>
+      <button id="start-btn" class="menu-btn">FEED THE BEASTS</button>
+    </div>
+  </div>
+
+  <div id="gameover-overlay" class="overlay">
+    <div class="overlay-box">
+      <div class="overlay-title">OVERRUN!</div>
+      <div class="overlay-sub">The animals were too hungry for Kobie!</div>
+      <div id="final-score-display" class="final-score">SCORE: 0</div>
+      <div id="hs-gameover"></div>
+      <button id="restart-btn" class="menu-btn">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <script src="highscores.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

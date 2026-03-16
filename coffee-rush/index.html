@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kobie's Coffee Rush — KobieCade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a href="../index.html" class="back-btn" aria-label="Back to KobieCade">&#9664; KOBIECADE</a>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+
+    <div id="ui">
+      <span>SCORE: <b id="score">0</b></span>
+      <span>BEST: <b id="best">0</b></span>
+      <span>LIVES: <b id="lives">[ I I I ]</b></span>
+    </div>
+  </div>
+
+  <!-- Overlays outside game-container -->
+  <div id="overlay" class="overlay active">
+    <div class="overlay-box">
+      <div class="overlay-title">KOBIE'S COFFEE RUSH</div>
+      <div class="overlay-sub">Catch the good stuff, dodge the bad!</div>
+      <div class="how-to">
+        <p>Move mouse or drag to control Kobie</p>
+        <p>☕ Catch coffee and snacks to score</p>
+        <p>💀 Catch bad items and lose a life</p>
+        <p>⚡ Grab power-ups for bonuses</p>
+        <p>Lose all 3 lives and it's over!</p>
+      </div>
+      <button id="start-btn" class="menu-btn">START GAME</button>
+    </div>
+  </div>
+
+  <div id="gameover-overlay" class="overlay">
+    <div class="overlay-box">
+      <div class="overlay-title">COFFEE SPILLED!</div>
+      <div class="overlay-sub">Kobie needs a break...</div>
+      <div id="final-score-display" class="final-score">SCORE: 0</div>
+      <div id="hs-gameover"></div>
+      <button id="restart-btn" class="menu-btn">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <script src="highscores.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
