@@ -87,7 +87,7 @@ fetch('Assets/music.mp3')
     const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     return ac.decodeAudioData(buf);
   })
-  .then(decoded => { musicBuffer = decoded; })
+  .then(decoded => { musicBuffer = decoded; if (audioUnlocked) startBgMusic(); })
   .catch(() => {}); // silently ignore missing asset during development
 
 function startBgMusic() {
