@@ -31,13 +31,15 @@ const GAME_H = 600;
 let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
 function resizeCanvas() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const vv = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
+  const vw = Math.floor(vv.width);
+  const vh = Math.floor(vv.height);
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
   const reservedTop   = 40;
   const reservedBelow = isTouch ? 60 : 36;
+  const availW = vw - (isTouch ? 8 : 0); // small horizontal margin on touch
   const availH = vh - reservedTop - reservedBelow;
-  const scale  = Math.min(vw / GAME_W, availH / GAME_H);
+  const scale  = Math.min(availW / GAME_W, availH / GAME_H);
   const w = Math.floor(GAME_W * scale);
   const h = Math.floor(GAME_H * scale);
   const x = Math.floor((vw - w) / 2);
@@ -61,8 +63,10 @@ function resizeCanvas() {
 
 let canvasRect = null;
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
+window.addEventListener('load', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 resizeCanvas();
-requestAnimationFrame(() => { canvasRect = canvas.getBoundingClientRect(); });
+requestAnimationFrame(() => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 
 // ─────────────────────────────────────────────────────────
 //  AUDIO  — Web Audio API (matches reference game pattern)

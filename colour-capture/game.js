@@ -14,25 +14,30 @@ let canvasRect = null;
 let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
 function resizeCanvas() {
-  const vw = window.innerWidth, vh = window.innerHeight;
-  const reserved = 36;
-  const scale = Math.min(vw / GAME_W, (vh - reserved) / GAME_H);
+  const vv = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
+  const vw = Math.floor(vv.width), vh = Math.floor(vv.height);
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+  const reservedTop   = 40;
+  const reservedBelow = isTouch ? 60 : 36;
+  const availW = vw - (isTouch ? 8 : 0);
+  const availH = vh - reservedTop - reservedBelow;
+  const scale = Math.min(availW / GAME_W, availH / GAME_H);
   const w = Math.floor(GAME_W * scale), h = Math.floor(GAME_H * scale);
-  const x = Math.floor((vw - w) / 2), y = Math.floor((vh - reserved - h) / 2);
-  if (w !== _rszW || h !== _rszH || x !== _rszX || y !== _rszY) {
-    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
-    canvas.style.position = 'fixed'; canvas.style.left = x + 'px'; canvas.style.top = y + 'px';
-    const r = document.documentElement.style;
-    r.setProperty('--canvas-left', x + 'px'); r.setProperty('--canvas-top', y + 'px');
-    r.setProperty('--canvas-width', w + 'px'); r.setProperty('--canvas-height', h + 'px');
-    _rszW = w; _rszH = h; _rszX = x; _rszY = y;
-  }
+  const x = Math.floor((vw - w) / 2), y = reservedTop + Math.floor((availH - h) / 2);
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  canvas.style.position = 'fixed'; canvas.style.left = x + 'px'; canvas.style.top = y + 'px';
+  const r = document.documentElement.style;
+  r.setProperty('--canvas-left', x + 'px'); r.setProperty('--canvas-top', y + 'px');
+  r.setProperty('--canvas-width', w + 'px'); r.setProperty('--canvas-height', h + 'px');
+  _rszW = w; _rszH = h; _rszX = x; _rszY = y;
   if (canvas.width !== GAME_W) canvas.width = GAME_W;
   if (canvas.height !== GAME_H) canvas.height = GAME_H;
 }
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
+window.addEventListener('load', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 resizeCanvas();
-requestAnimationFrame(() => { canvasRect = canvas.getBoundingClientRect(); });
+requestAnimationFrame(() => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 
 function canvasPoint(clientX, clientY) {
   const rect = canvasRect || canvas.getBoundingClientRect();
