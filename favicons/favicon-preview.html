@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KobieCade — Favicon Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a1a;
+      font-family: 'Courier New', monospace;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+    }
+
+    h1 {
+      font-size: 13px;
+      letter-spacing: 6px;
+      color: #ff69b4;
+      text-shadow: 0 0 20px #ff69b480;
+      margin-bottom: 8px;
+    }
+
+    p.sub {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: #ff69b460;
+      margin-bottom: 40px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .card {
+      background: #0d0d22;
+      border: 1px solid #ff69b430;
+      border-radius: 10px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .card-title {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: #ff69b4aa;
+      text-align: center;
+    }
+
+    .canvas-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    canvas {
+      border-radius: 16px;
+      image-rendering: pixelated;
+    }
+
+    canvas.size-256 { width: 256px; height: 256px; border: 2px solid #ff69b440; }
+    canvas.size-64  { width: 64px;  height: 64px;  border: 1px solid #ff69b430; }
+    canvas.size-32  { width: 32px;  height: 32px;  border: 1px solid #ff69b430; }
+
+    .sizes {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .size-label {
+      font-size: 8px;
+      letter-spacing: 1px;
+      color: #ff69b450;
+      text-align: center;
+    }
+
+    .size-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    button.render-btn {
+      padding: 8px 20px;
+      border: 1px solid #ff69b4;
+      background: transparent;
+      color: #ff69b4;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 100ms;
+    }
+    button.render-btn:hover { background: #ff69b415; }
+
+    .tip {
+      margin-top: 40px;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: #ff69b440;
+      text-align: center;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>KOBIECADE — FAVICON STUDIO</h1>
+  <p class="sub">CLICK RENDER TO PREVIEW · SCREENSHOT THE 256PX VERSION</p>
+
+  <div class="grid">
+
+    <!-- BEAST FEEDER — Biscuit -->
+    <div class="card">
+      <div class="card-title">BEAST FEEDER<br>THE BISCUIT</div>
+      <div class="canvas-wrap">
+        <canvas id="c-beast" width="256" height="256" class="size-256"></canvas>
+        <div class="sizes">
+          <div class="size-group">
+            <canvas id="c-beast-64" width="64" height="64" class="size-64"></canvas>
+            <div class="size-label">64px</div>
+          </div>
+          <div class="size-group">
+            <canvas id="c-beast-32" width="32" height="32" class="size-32"></canvas>
+            <div class="size-label">32px</div>
+          </div>
+        </div>
+      </div>
+      <button class="render-btn" onclick="renderBeast()">RENDER</button>
+    </div>
+
+    <!-- BUBBLE SLUMBER — Cloud + ZZZ -->
+    <div class="card">
+      <div class="card-title">BUBBLE SLUMBER<br>DREAM CLOUD</div>
+      <div class="canvas-wrap">
+        <canvas id="c-bubble" width="256" height="256" class="size-256"></canvas>
+        <div class="sizes">
+          <div class="size-group">
+            <canvas id="c-bubble-64" width="64" height="64" class="size-64"></canvas>
+            <div class="size-label">64px</div>
+          </div>
+          <div class="size-group">
+            <canvas id="c-bubble-32" width="32" height="32" class="size-32"></canvas>
+            <div class="size-label">32px</div>
+          </div>
+        </div>
+      </div>
+      <button class="render-btn" onclick="renderBubble()">RENDER</button>
+    </div>
+
+    <!-- COFFEE RUSH — Coffee Cup -->
+    <div class="card">
+      <div class="card-title">COFFEE RUSH<br>COFFEE CUP</div>
+      <div class="canvas-wrap">
+        <canvas id="c-coffee" width="256" height="256" class="size-256"></canvas>
+        <div class="sizes">
+          <div class="size-group">
+            <canvas id="c-coffee-64" width="64" height="64" class="size-64"></canvas>
+            <div class="size-label">64px</div>
+          </div>
+          <div class="size-group">
+            <canvas id="c-coffee-32" width="32" height="32" class="size-32"></canvas>
+            <div class="size-label">32px</div>
+          </div>
+        </div>
+      </div>
+      <button class="render-btn" onclick="renderCoffee()">RENDER</button>
+    </div>
+
+    <!-- COLOUR CAPTURE — Camera -->
+    <div class="card">
+      <div class="card-title">COLOUR CAPTURE<br>CAMERA</div>
+      <div class="canvas-wrap">
+        <canvas id="c-colour" width="256" height="256" class="size-256"></canvas>
+        <div class="sizes">
+          <div class="size-group">
+            <canvas id="c-colour-64" width="64" height="64" class="size-64"></canvas>
+            <div class="size-label">64px</div>
+          </div>
+          <div class="size-group">
+            <canvas id="c-colour-32" width="32" height="32" class="size-32"></canvas>
+            <div class="size-label">32px</div>
+          </div>
+        </div>
+      </div>
+      <button class="render-btn" onclick="renderColour()">RENDER</button>
+    </div>
+
+  </div>
+
+  <div class="tip">
+    RENDER ALL: <button class="render-btn" style="display:inline;padding:4px 12px" onclick="renderAll()">RENDER ALL</button>
+    &nbsp;·&nbsp; RIGHT-CLICK THE 256PX CANVAS TO SAVE AS IMAGE
+  </div>
+
+<script>
+// ── Shared draw background ─────────────────────────────
+function drawBg(ctx, size) {
+  const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size*0.7);
+  grad.addColorStop(0, '#1a1a2e');
+  grad.addColorStop(1, '#08081a');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, size * 0.18);
+  ctx.fill();
+}
+
+// Copy 256px canvas down to smaller sizes
+function copyDown(srcId, ids) {
+  const src = document.getElementById(srcId);
+  ids.forEach(id => {
+    const dst = document.getElementById(id);
+    dst.getContext('2d').drawImage(src, 0, 0, dst.width, dst.height);
+  });
+}
+
+// ── BEAST FEEDER — Biscuit ─────────────────────────────
+function drawBiscuit(ctx, cx, cy, r) {
+  const s = r;
+  const rx = s * 0.78; // wide oval
+  const ry = s * 0.52; // short oval
+
+  // Shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = s * 0.3;
+  ctx.shadowOffsetY = s * 0.1;
+  ctx.fillStyle = '#b07830';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Biscuit body — warm golden oval
+  ctx.fillStyle = '#d4a04a';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Top face — lighter oval inset
+  ctx.fillStyle = '#e8b85a';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - s*0.03, rx*0.88, ry*0.84, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Crispy edge ring
+  ctx.strokeStyle = '#c49030';
+  ctx.lineWidth = s * 0.04;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx*0.92, ry*0.90, 0, 0, Math.PI*2);
+  ctx.stroke();
+
+  // Shine
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.beginPath();
+  ctx.ellipse(cx - rx*0.28, cy - ry*0.38, rx*0.32, ry*0.22, -0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Texture dots — arranged in oval grid
+  ctx.fillStyle = '#b88030';
+  const dots = [
+    [-0.36, -0.10], [-0.14, -0.22], [0.14, -0.22], [0.36, -0.10],
+    [-0.26,  0.12], [0,  0.18], [0.26,  0.12],
+    [-0.36,  0.08], [0.36,  0.08],
+  ];
+  dots.forEach(([dx, dy]) => {
+    const px = cx + dx * s;
+    const py = cy + dy * s;
+    // Only draw dot if inside the oval
+    if ((px-cx)*(px-cx)/(rx*0.78)/(rx*0.78) + (py-cy)*(py-cy)/(ry*0.78)/(ry*0.78) <= 1) {
+      ctx.beginPath();
+      ctx.arc(px, py, s*0.045, 0, Math.PI*2);
+      ctx.fill();
+    }
+  });
+
+  // Pink heart stamp in centre
+  ctx.save();
+  ctx.translate(cx, cy + s*0.01);
+  const hs = s * 0.16;
+  ctx.fillStyle = '#ff69b4';
+  ctx.shadowColor = '#ff69b460';
+  ctx.shadowBlur = s * 0.1;
+  ctx.beginPath();
+  ctx.moveTo(0, hs*0.5);
+  ctx.bezierCurveTo(-hs*1.2, -hs*0.2, -hs*1.2, -hs*1.1, 0, -hs*0.5);
+  ctx.bezierCurveTo(hs*1.2, -hs*1.1, hs*1.2, -hs*0.2, 0, hs*0.5);
+  ctx.fill();
+  ctx.restore();
+}
+
+function renderBeast() {
+  const c = document.getElementById('c-beast');
+  const ctx = c.getContext('2d');
+  const S = 256;
+  ctx.clearRect(0, 0, S, S);
+  drawBg(ctx, S);
+  drawBiscuit(ctx, S/2, S/2, S * 0.38);
+  copyDown('c-beast', ['c-beast-64', 'c-beast-32']);
+}
+
+// ── BUBBLE SLUMBER — Dream Cloud + ZZZ ────────────────
+function drawDreamCloud(ctx, cx, cy, r) {
+  const s = r;
+
+  // Soft purple glow behind cloud
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, s*1.1);
+  glow.addColorStop(0, '#cc88ff22');
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, s*1.1, 0, Math.PI*2);
+  ctx.fill();
+
+  // Cloud body — layered arcs
+  ctx.save();
+  ctx.shadowColor = '#cc88ff40';
+  ctx.shadowBlur = s * 0.25;
+
+  const cloudColor = '#e8e0ff';
+  ctx.fillStyle = cloudColor;
+
+  // Build cloud as series of overlapping circles
+  const blobs = [
+    [cx - s*0.42, cy + s*0.10, s*0.38],  // left
+    [cx - s*0.12, cy - s*0.12, s*0.46],  // centre-left
+    [cx + s*0.22, cy - s*0.18, s*0.42],  // centre-right
+    [cx + s*0.52, cy + s*0.08, s*0.34],  // right
+    [cx - s*0.05, cy + s*0.22, s*0.52],  // bottom fill
+  ];
+  blobs.forEach(([bx, by, br]) => {
+    ctx.beginPath();
+    ctx.arc(bx, by, br, 0, Math.PI*2);
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // Subtle cloud shading on underside
+  ctx.fillStyle = 'rgba(160,140,200,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + s*0.28, s*0.62, s*0.18, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Cloud shine
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(cx - s*0.18, cy - s*0.14, s*0.22, s*0.12, -0.4, 0, Math.PI*2);
+  ctx.fill();
+
+  // ZZZ text stacked
+  const fontSize = s * 0.28;
+  ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const zzz = ['Z', 'Z', 'Z'];
+  const positions = [
+    [cx - s*0.04, cy - s*0.04, 1.0],
+    [cx + s*0.16, cy - s*0.26, 0.7],
+    [cx + s*0.30, cy - s*0.44, 0.45],
+  ];
+
+  positions.forEach(([zx, zy, alpha], i) => {
+    const fs = fontSize * (1 - i * 0.22);
+    ctx.font = `bold ${fs}px 'Courier New', monospace`;
+    ctx.fillStyle = `rgba(180,120,255,${alpha})`;
+    ctx.shadowColor = `rgba(180,120,255,${alpha * 0.6})`;
+    ctx.shadowBlur = s * 0.1;
+    ctx.fillText('Z', zx, zy);
+  });
+  ctx.shadowBlur = 0;
+  ctx.textBaseline = 'alphabetic';
+}
+
+function renderBubble() {
+  const c = document.getElementById('c-bubble');
+  const ctx = c.getContext('2d');
+  const S = 256;
+  ctx.clearRect(0, 0, S, S);
+  drawBg(ctx, S);
+  drawDreamCloud(ctx, S/2, S/2 + S*0.04, S * 0.36);
+  copyDown('c-bubble', ['c-bubble-64', 'c-bubble-32']);
+}
+
+// ── COFFEE RUSH — Coffee Cup ───────────────────────────
+function drawCoffeeCup(ctx, cx, cy, r) {
+  const s = r;
+
+  // Shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = s * 0.3;
+  ctx.shadowOffsetY = s * 0.1;
+
+  // Saucer
+  ctx.fillStyle = '#c07850';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + s*0.78, s*0.72, s*0.16, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+
+  // Saucer highlight
+  ctx.fillStyle = '#d48a60';
+  ctx.beginPath();
+  ctx.ellipse(cx - s*0.1, cy + s*0.72, s*0.42, s*0.08, -0.2, 0, Math.PI*2);
+  ctx.fill();
+
+  // Cup body
+  const cupGrad = ctx.createLinearGradient(cx - s*0.5, 0, cx + s*0.5, 0);
+  cupGrad.addColorStop(0, '#c07850');
+  cupGrad.addColorStop(0.35, '#e09060');
+  cupGrad.addColorStop(1, '#a06040');
+  ctx.fillStyle = cupGrad;
+  ctx.beginPath();
+  ctx.moveTo(cx - s*0.48, cy - s*0.28);
+  ctx.lineTo(cx - s*0.38, cy + s*0.65);
+  ctx.quadraticCurveTo(cx, cy + s*0.72, cx + s*0.38, cy + s*0.65);
+  ctx.lineTo(cx + s*0.48, cy - s*0.28);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cup rim
+  ctx.fillStyle = '#d48a60';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - s*0.28, s*0.48, s*0.1, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Handle
+  ctx.strokeStyle = '#b06840';
+  ctx.lineWidth = s * 0.12;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(cx + s*0.52, cy + s*0.18, s*0.22, -Math.PI*0.4, Math.PI*0.6);
+  ctx.stroke();
+
+  // Coffee inside — dark liquid
+  ctx.fillStyle = '#3a1e0a';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - s*0.22, s*0.40, s*0.09, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Coffee foam/cream swirl
+  ctx.fillStyle = '#d4a060';
+  ctx.beginPath();
+  ctx.ellipse(cx + s*0.06, cy - s*0.22, s*0.22, s*0.07, 0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Steam wisps
+  ctx.strokeStyle = 'rgba(255,220,180,0.55)';
+  ctx.lineWidth = s * 0.055;
+  ctx.lineCap = 'round';
+  [[-0.18, 0], [0, -0.06], [0.18, 0]].forEach(([dx, phase]) => {
+    ctx.beginPath();
+    ctx.moveTo(cx + dx*s, cy - s*0.42);
+    ctx.bezierCurveTo(
+      cx + dx*s + s*0.08, cy - s*0.58,
+      cx + dx*s - s*0.08, cy - s*0.72,
+      cx + dx*s + s*0.04, cy - s*0.88
+    );
+    ctx.stroke();
+  });
+
+  // Pink heart on cup
+  ctx.save();
+  ctx.translate(cx - s*0.1, cy + s*0.2);
+  const hs = s * 0.14;
+  ctx.fillStyle = '#ff69b4';
+  ctx.shadowColor = '#ff69b460';
+  ctx.shadowBlur = s * 0.08;
+  ctx.beginPath();
+  ctx.moveTo(0, hs*0.5);
+  ctx.bezierCurveTo(-hs*1.2, -hs*0.2, -hs*1.2, -hs*1.1, 0, -hs*0.5);
+  ctx.bezierCurveTo(hs*1.2, -hs*1.1, hs*1.2, -hs*0.2, 0, hs*0.5);
+  ctx.fill();
+  ctx.restore();
+}
+
+function renderCoffee() {
+  const c = document.getElementById('c-coffee');
+  const ctx = c.getContext('2d');
+  const S = 256;
+  ctx.clearRect(0, 0, S, S);
+  drawBg(ctx, S);
+  drawCoffeeCup(ctx, S/2, S/2 - S*0.04, S * 0.38);
+  copyDown('c-coffee', ['c-coffee-64', 'c-coffee-32']);
+}
+
+// ── COLOUR CAPTURE — Camera ────────────────────────────
+function drawCamera(ctx, cx, cy, r) {
+  const s = r;
+
+  // Shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = s * 0.28;
+  ctx.shadowOffsetY = s * 0.1;
+
+  // Camera body
+  const bodyGrad = ctx.createLinearGradient(cx, cy - s*0.5, cx, cy + s*0.5);
+  bodyGrad.addColorStop(0, '#2a2a4a');
+  bodyGrad.addColorStop(1, '#18182e');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.roundRect(cx - s*0.72, cy - s*0.38, s*1.44, s*0.92, s*0.12);
+  ctx.fill();
+  ctx.restore();
+
+  // Top hump (viewfinder bump)
+  ctx.fillStyle = '#222240';
+  ctx.beginPath();
+  ctx.roundRect(cx - s*0.22, cy - s*0.58, s*0.44, s*0.24, s*0.08);
+  ctx.fill();
+
+  // Flash bump (left)
+  ctx.fillStyle = '#1e1e3a';
+  ctx.beginPath();
+  ctx.roundRect(cx - s*0.62, cy - s*0.56, s*0.28, s*0.20, s*0.06);
+  ctx.fill();
+  // Flash glass
+  ctx.fillStyle = '#ffee88';
+  ctx.shadowColor = '#ffee8880';
+  ctx.shadowBlur = s * 0.12;
+  ctx.beginPath();
+  ctx.roundRect(cx - s*0.58, cy - s*0.52, s*0.20, s*0.12, s*0.04);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Body edge highlight
+  ctx.strokeStyle = '#ff69b430';
+  ctx.lineWidth = s * 0.018;
+  ctx.beginPath();
+  ctx.roundRect(cx - s*0.72, cy - s*0.38, s*1.44, s*0.92, s*0.12);
+  ctx.stroke();
+
+  // Lens outer ring
+  ctx.fillStyle = '#111120';
+  ctx.beginPath();
+  ctx.arc(cx, cy + s*0.08, s*0.35, 0, Math.PI*2);
+  ctx.fill();
+
+  // Lens ring 2
+  ctx.strokeStyle = '#ff69b4';
+  ctx.lineWidth = s * 0.04;
+  ctx.beginPath();
+  ctx.arc(cx, cy + s*0.08, s*0.30, 0, Math.PI*2);
+  ctx.stroke();
+
+  // Lens ring 3 — chrome
+  ctx.strokeStyle = '#3a3a5a';
+  ctx.lineWidth = s * 0.035;
+  ctx.beginPath();
+  ctx.arc(cx, cy + s*0.08, s*0.23, 0, Math.PI*2);
+  ctx.stroke();
+
+  // Lens glass
+  const lensGrad = ctx.createRadialGradient(
+    cx - s*0.08, cy + s*0.01, 0,
+    cx, cy + s*0.08, s*0.20
+  );
+  lensGrad.addColorStop(0, '#4488ff88');
+  lensGrad.addColorStop(0.5, '#2244aa44');
+  lensGrad.addColorStop(1, '#111130cc');
+  ctx.fillStyle = lensGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy + s*0.08, s*0.20, 0, Math.PI*2);
+  ctx.fill();
+
+  // Lens shine
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.beginPath();
+  ctx.arc(cx - s*0.07, cy + s*0.00, s*0.07, 0, Math.PI*2);
+  ctx.fill();
+
+  // Shutter button
+  ctx.fillStyle = '#ff69b4';
+  ctx.shadowColor = '#ff69b460';
+  ctx.shadowBlur = s * 0.1;
+  ctx.beginPath();
+  ctx.arc(cx + s*0.54, cy - s*0.24, s*0.09, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Shutter button shine
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath();
+  ctx.arc(cx + s*0.50, cy - s*0.27, s*0.035, 0, Math.PI*2);
+  ctx.fill();
+
+  // Strap lugs
+  ctx.fillStyle = '#333355';
+  [[-0.70, 0.28], [0.70, 0.28]].forEach(([dx, dy]) => {
+    ctx.beginPath();
+    ctx.roundRect(cx + dx*s - s*0.055, cy + dy*s, s*0.11, s*0.14, s*0.03);
+    ctx.fill();
+  });
+}
+
+function renderColour() {
+  const c = document.getElementById('c-colour');
+  const ctx = c.getContext('2d');
+  const S = 256;
+  ctx.clearRect(0, 0, S, S);
+  drawBg(ctx, S);
+  drawCamera(ctx, S/2, S/2, S * 0.4);
+  copyDown('c-colour', ['c-colour-64', 'c-colour-32']);
+}
+
+function renderAll() {
+  renderBeast();
+  renderBubble();
+  renderCoffee();
+  renderColour();
+}
+
+// Auto-render on load
+window.addEventListener('load', renderAll);
+</script>
+</body>
+</html>
