@@ -697,8 +697,17 @@ function bubblePos(row, col) {
 // Falls back to parity calculation only for rows not yet created.
 function colsInRow(row) {
   if (grid[row] && grid[row].length > 0) return grid[row].length;
-  // For a not-yet-created row, derive from the parity we'd assign it
-  const parity = gridRowParity[row] ?? nextTopParity;
+  // For a not-yet-created row, derive parity from the row above if available,
+  // so bottom-extension rows get the correct parity rather than nextTopParity
+  // (which tracks the top of the grid, not the bottom).
+  let parity;
+  if (gridRowParity[row] !== undefined) {
+    parity = gridRowParity[row];
+  } else if (row > 0 && gridRowParity[row - 1] !== undefined) {
+    parity = gridRowParity[row - 1] === 0 ? 1 : 0;
+  } else {
+    parity = nextTopParity;
+  }
   return parity === 0 ? COLS : COLS - 1;
 }
 
@@ -778,12 +787,14 @@ function neighbours(row, col) {
     [row,     col - 1], [row,     col + 1],
     [row + 1, col - 1], [row + 1, col],
   ];
-  return candidates.filter(([r, c]) => r >= 0 && c >= 0 && grid[r] && c < colsInRow(r));
+  return candidates.filter(([r, c]) => r >= 0 && c >= 0 && c < colsInRow(r));
 }
 
 // Snap a pixel position to the nearest *empty* grid cell adjacent to an
 // existing bubble (or the top row if the grid is empty).
-function snapToGrid(px, py) {
+// vx/vy are the projectile velocity at impact — used to bias snapping toward
+// the side the projectile was approaching from.
+function snapToGrid(px, py, vx = 0, vy = 0) {
   // Collect candidate cells: empty cells that are adjacent to a filled cell,
   // plus all cells in row 0 (the ceiling).
   const candidates = new Set();
@@ -818,17 +829,28 @@ function snapToGrid(px, py) {
     const nextRow = maxConnectedRow + 1;
     // Derive the parity for this new bottom row from the row above it,
     // not from nextTopParity (which tracks the top, not the bottom).
-    if (!gridRowParity[nextRow]) {
+    // Use === undefined rather than !gridRowParity so that parity 0 (even rows)
+    // is not incorrectly treated as unset.
+    if (gridRowParity[nextRow] === undefined) {
       const aboveParity = gridRowParity[nextRow - 1] ?? 0;
       gridRowParity[nextRow] = aboveParity === 0 ? 1 : 0;
     }
-    for (let c = 0; c < colsInRow(nextRow); c++) {
-      candidates.add(nextRow + ',' + c);
+    // Only add cells in the new row that are actually adjacent to a filled
+    // connected cell — not the entire row blindly, which can produce
+    // out-of-bounds column indices when the row doesn't exist yet.
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < colsInRow(r); c++) {
+        if (grid[r][c] < 0) continue;
+        if (!connected.has(r + ',' + c)) continue;
+        for (const [nr, nc] of neighbours(r, c)) {
+          if (nr === nextRow) candidates.add(nr + ',' + nc);
+        }
+      }
     }
   } else {
     // No connected bubbles at all — allow full bottom row as fallback
     const nextRow = grid.length;
-    if (!gridRowParity[nextRow]) {
+    if (gridRowParity[nextRow] === undefined) {
       const aboveParity = gridRowParity[nextRow - 1] ?? 0;
       gridRowParity[nextRow] = aboveParity === 0 ? 1 : 0;
     }
@@ -841,9 +863,20 @@ function snapToGrid(px, py) {
   for (const key of candidates) {
     const [r, c] = key.split(',').map(Number);
     const pos = bubblePos(r, c);
-    const d = Math.hypot(px - pos.x, py - pos.y);
+    let d = Math.hypot(px - pos.x, py - pos.y);
+    // Bias: penalise candidates that are behind the projectile's travel
+    // direction. This ensures a rightward-moving bubble snaps to a cell
+    // on the right side of the cluster rather than the left, and vice versa.
+    if (vx !== 0 || vy !== 0) {
+      const speed = Math.hypot(vx, vy);
+      const nx = vx / speed, ny = vy / speed;  // unit direction vector
+      const dx = pos.x - px,  dy = pos.y - py; // vector to candidate
+      const dot = dx * nx + dy * ny;            // positive = ahead, negative = behind
+      if (dot < 0) d += R * 3;                 // penalise behind-direction candidates
+    }
     if (d < bestDist) { bestDist = d; bestR = r; bestC = c; }
   }
+
   return [bestR, bestC];
 }
 
@@ -1063,9 +1096,6 @@ function updateProjectile() {
   if (projectile.x - R < leftWall)  { projectile.x = leftWall + R;  projectile.vx *= -1; bounced = true; }
   if (projectile.x + R > rightWall) { projectile.x = rightWall - R; projectile.vx *= -1; bounced = true; }
 
-  // Skip collision detection on the frame of a bounce to prevent phantom landings
-  if (bounced) return;
-
   // Off the top — snap to top row
   if (projectile.y - R < GRID_TOP) {
     landProjectile();
@@ -1148,14 +1178,18 @@ function landProjectile() {
     return;
   }
 
-  const [r, c] = snapToGrid(projectile.x, projectile.y);
+  const [r, c] = snapToGrid(projectile.x, projectile.y, projectile.vx, projectile.vy);
 
-  // Ensure grid has enough rows, assigning parity for each new row
+  // Ensure grid has enough rows, assigning parity for each new row.
+  // Use any parity already written by snapToGrid — only derive from the
+  // previous row if the slot is still undefined.
   while (grid.length <= r) {
-    const lastParity = gridRowParity.length > 0 ? gridRowParity[gridRowParity.length - 1] : 0;
-    const newParity = lastParity === 0 ? 1 : 0;
-    gridRowParity.push(newParity);
-    const cols = newParity === 0 ? COLS : COLS - 1;
+    const newRow = grid.length;
+    if (gridRowParity[newRow] === undefined) {
+      const aboveParity = gridRowParity[newRow - 1] ?? 0;
+      gridRowParity[newRow] = aboveParity === 0 ? 1 : 0;
+    }
+    const cols = gridRowParity[newRow] === 0 ? COLS : COLS - 1;
     grid.push(Array(cols).fill(-1));
   }
 
@@ -1490,6 +1524,57 @@ function testStuck() {
   } else {
     console.error('  FAIL — grid not empty, stragglers remain');
     grid.forEach((row, i) => { if (row.some(c => c >= 0)) console.log('  row', i, row); });
+  }
+}
+
+function testCornerLandingRight() {
+  state = 'playing';
+  projectile = null;
+  popAnims = [];
+  floatTexts = [];
+
+  // Place bubbles in the top-right corner
+  grid = [];
+  gridRowParity = [];
+  for (let i = 0; i < 3; i++) {
+    const parity = i % 2;
+    gridRowParity[i] = parity;
+    const cols = parity === 0 ? COLS : COLS - 1;
+    grid[i] = new Array(cols).fill(-1);
+  }
+  // Top-right bubbles (last two columns of row 0)
+  grid[0][COLS - 1] = 0;
+  grid[0][COLS - 2] = 1;
+  grid[1][COLS - 2] = 2;  // COLS-1 would be out of bounds for odd row (COLS-1 cols)
+
+  currentBubbleColour = 3;
+  projectile = {
+    x: GRID_X + COLS * COL_W - R,  // at the right wall after a bounce correction
+    y: GRID_TOP + R * 0.8,          // just about to cross GRID_TOP
+    vx: -BUBBLE_SPEED,              // moving left (just bounced off right wall)
+    vy: -BUBBLE_SPEED * 0.3,
+    colour: 3,
+  };
+
+  console.log('--- testCornerLandingRight() ---');
+  console.log('Before: projectile at', projectile.x.toFixed(1), projectile.y.toFixed(1));
+  console.log('  projectile.y - R < GRID_TOP?', (projectile.y - R) < GRID_TOP, '→ should trigger landProjectile');
+
+  updateProjectile();
+
+  if (!projectile) {
+    console.log('✓ PASS — projectile landed');
+    let placed = false;
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < colsInRow(r); c++) {
+        if (grid[r][c] === 3) { placed = true; console.log('  Placed at row', r, 'col', c); }
+      }
+    }
+    if (!placed) console.warn('  (bubble matched and popped — still valid, check popAnims)');
+    if (popAnims.length > 0) console.log('  popAnims fired:', popAnims.length, '(match/pop occurred)');
+  } else {
+    console.error('✗ FAIL — projectile was not landed');
+    console.log('  projectile:', projectile);
   }
 }
 
