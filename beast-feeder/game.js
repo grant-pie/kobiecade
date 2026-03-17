@@ -25,8 +25,15 @@ const finalScoreDisplay = document.getElementById('final-score-display');
 // ─────────────────────────────────────────────────────────
 //  CANVAS SIZING  (letterbox, same as reference game)
 // ─────────────────────────────────────────────────────────
-const GAME_W = 800;
-const GAME_H = 600;
+let GAME_W = 800;
+let GAME_H = 600;
+let LAUNCHER_X = GAME_W / 2;
+let LAUNCHER_Y = GAME_H - 120;
+
+function recalcLayout() {
+  LAUNCHER_X = GAME_W / 2;
+  LAUNCHER_Y = GAME_H - Math.round(GAME_H * 0.20);
+}
 
 let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
@@ -35,28 +42,17 @@ function resizeCanvas() {
   const vw = Math.floor(vv.width);
   const vh = Math.floor(vv.height);
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const reservedTop   = 40;
-  const reservedBelow = isTouch ? 60 : 36;
-  const availH = vh - reservedTop - reservedBelow;
-
   let w, h, x, y;
   if (isTouch) {
-    // Mobile: fill full viewport width, scale height proportionally
-    w = vw;
-    h = Math.min(Math.floor(w * GAME_H / GAME_W), availH);
-    w = Math.floor(h * GAME_W / GAME_H);
-    x = Math.floor((vw - w) / 2);
-    y = reservedTop + Math.floor((availH - h) / 2);
+    w = vw; h = vh; x = 0; y = 0;
   } else {
-    // Desktop: cap at 560px wide (comfortable landscape size)
     const maxW = 560;
-    const scale = Math.min(maxW / GAME_W, availH / GAME_H);
+    const scale = Math.min(maxW / GAME_W, vh / GAME_H);
     w = Math.floor(GAME_W * scale);
     h = Math.floor(GAME_H * scale);
     x = Math.floor((vw - w) / 2);
-    y = reservedTop + Math.floor((availH - h) / 2);
+    y = Math.floor((vh - h) / 2);
   }
-
   canvas.style.width    = w + 'px';
   canvas.style.height   = h + 'px';
   canvas.style.position = 'fixed';
@@ -68,9 +64,10 @@ function resizeCanvas() {
   root.setProperty('--canvas-width',  w + 'px');
   root.setProperty('--canvas-height', h + 'px');
   _rszW = w; _rszH = h; _rszX = x; _rszY = y;
-
-  if (canvas.width  !== GAME_W) canvas.width  = GAME_W;
-  if (canvas.height !== GAME_H) canvas.height = GAME_H;
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  GAME_W = w; GAME_H = h;
+  recalcLayout();
 }
 
 let canvasRect = null;
@@ -656,9 +653,7 @@ let waveKittensLeft = 0;
 let betweenWaves = false;
 let betweenTimer = 0;
 
-// Launcher
-const LAUNCHER_X = GAME_W / 2;
-const LAUNCHER_Y = GAME_H - 120;
+// Launcher — LAUNCHER_X/Y declared at top of file
 
 // Drag / aim state
 let isDragging   = false;
@@ -675,7 +670,7 @@ function waveConfig(w) {
   return {
     count:      5 + (w - 1) * 2,
     speed:      0.4 + (w - 1) * 0.08,
-    size:       28 + Math.random() * 10,
+    size:       Math.round(GAME_W * 0.13) + Math.random() * Math.round(GAME_W * 0.03),
     spawnRate:  Math.max(60, 130 - (w - 1) * 8),
   };
 }
@@ -932,6 +927,23 @@ function draw() {
     ctx.fillText(`WAVE ${wave} INCOMING!`, GAME_W / 2, GAME_H / 2);
     ctx.shadowBlur  = 0;
   }
+
+  // ── On-canvas HUD bar at bottom
+  const HUD_H = 36;
+  ctx.fillStyle = 'rgba(10,10,26,0.75)';
+  ctx.fillRect(0, GAME_H - HUD_H, GAME_W, HUD_H);
+  ctx.strokeStyle = '#ff69b430';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, GAME_H - HUD_H); ctx.lineTo(GAME_W, GAME_H - HUD_H); ctx.stroke();
+  ctx.font = 'bold 13px "Courier New", monospace';
+  ctx.fillStyle = '#ff69b4';
+  ctx.textBaseline = 'middle';
+  const hudY = GAME_H - HUD_H / 2;
+  ctx.textAlign = 'left';   ctx.fillText('SCORE: ' + score, 12, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('WAVE: ' + wave, GAME_W / 2, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', GAME_W * 0.75, hudY);
+  ctx.textAlign = 'right';  ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('hungry-hungry-kittens') : 0), GAME_W - 12, hudY);
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawAimGuide() {
@@ -997,19 +1009,7 @@ let _hudScore = -1, _hudWave = -1, _hudLives = -1, _hudBest = -1;
 let _hudPending = false;
 
 function scheduleHUD() {
-  if (_hudPending) return;
-  _hudPending = true;
-  requestAnimationFrame(() => {
-    _hudPending = false;
-    const best = hsBest('hungry-hungry-kittens');
-    if (score !== _hudScore) { scoreEl.textContent = score; _hudScore = score; }
-    if (wave  !== _hudWave)  { waveEl.textContent  = wave;  _hudWave  = wave;  }
-    if (best  !== _hudBest)  { bestEl.textContent  = best;  _hudBest  = best;  }
-    if (lives !== _hudLives) {
-      livesEl.textContent = '[ ' + 'I '.repeat(Math.max(0, lives)).trimEnd() + ' ]';
-      _hudLives = lives;
-    }
-  });
+  // HUD is drawn on canvas each frame — nothing to do here
 }
 
 function updateHUD() { scheduleHUD(); }
