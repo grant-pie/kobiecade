@@ -701,10 +701,12 @@ function makeStars(n, w, h) {
 })();
 
 // ── Hall of Fame ──────────────────────────────────────
+// ── Hall of Fame ──────────────────────────────────────
 (function() {
-  hsRenderBest('bubble-slumber',       'hs-landing-todos');
-  hsRenderBest('hungry-hungry-kittens','hs-landing-kittens');
-  hsRenderBest('coffee-rush',          'hs-landing-coffee');
+  hsRenderBest('bubble-slumber', 'hs-landing-todos');
+  hsRenderBest('beast-feeder',   'hs-landing-kittens');  // was 'hungry-hungry-kittens'
+  hsRenderBest('coffee-rush',    'hs-landing-coffee');
+  hsRenderBest('colour-capture', 'hs-landing-colour');   // moved inside the block
 })();
 // ── Colour Capture preview ────────────────────────────────
 (function () {
