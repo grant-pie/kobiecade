@@ -630,7 +630,7 @@ function makeStars(n, w, h) {
     ctx.beginPath(); ctx.moveTo(18, -12); ctx.lineTo(26, 4); ctx.stroke();
     // Tattoos
     ctx.save();
-    ctx.strokeStyle = '#7a5c9a'; ctx.fillStyle = '#7a5c9a';
+    ctx.strokeStyle = '#000'; ctx.fillStyle = '#000';
     ctx.lineWidth = 1; ctx.lineCap = 'round';
     // Dog — upper left arm
     ctx.save(); ctx.translate(-21, -8); ctx.scale(0.75, 0.75);

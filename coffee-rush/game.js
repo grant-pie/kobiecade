@@ -708,8 +708,8 @@ function drawKobie(x, y, moving) {
 
   // ── Tattoos ───────────────────────────────────────────────
   ctx.save();
-  ctx.strokeStyle = '#7a5c9a';
-  ctx.fillStyle   = '#7a5c9a';
+  ctx.strokeStyle = '#000';
+  ctx.fillStyle   = '#000';
   ctx.lineWidth   = 1;
   ctx.lineCap     = 'round';
 
