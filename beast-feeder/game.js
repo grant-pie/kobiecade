@@ -155,6 +155,8 @@ function unlockAudio() {
 
 // Unlock on first keyboard press too
 document.addEventListener('keydown', unlockAudio, { once: true });
+// Catch any tap anywhere on the page as an unlock opportunity (iOS belt-and-braces)
+document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
 
 // ── Low-level synth helpers ───────────────────────────────
 function playTone(freq, endFreq, duration, type, gain, delay = 0) {
@@ -1164,6 +1166,10 @@ canvas.addEventListener('touchend', e => {
 // ─────────────────────────────────────────────────────────
 //  OVERLAY BUTTONS
 // ─────────────────────────────────────────────────────────
+// iOS requires AudioContext unlock on touchstart, not click
+startBtn.addEventListener('touchstart', () => { unlockAudio(); }, { passive: true });
+restartBtn.addEventListener('touchstart', () => { unlockAudio(); }, { passive: true });
+
 startBtn.addEventListener('click', () => {
   unlockAudio();
   overlay.classList.remove('active');
