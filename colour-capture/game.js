@@ -439,7 +439,10 @@ function spawnObject() {
   const type  = OBJ_TYPES[Math.floor(Math.random() * OBJ_TYPES.length)];
   const col   = randomColourFor(targetColour);
   const r     = 24 + Math.random() * 16;
-  const lanes = [80, 160, 240, 320, 400];
+  const margin  = r + 10;
+  const usableW = GAME_W - margin * 2;
+  const numLanes = 5;
+  const lanes = Array.from({ length: numLanes }, (_, i) => margin + (usableW / (numLanes - 1)) * i);
   const x     = lanes[Math.floor(Math.random() * lanes.length)] + (Math.random()-0.5)*20;
   // Find the colour number for this hex
   const colDef = TARGET_COLOURS.find(c => c.variants.includes(col));
