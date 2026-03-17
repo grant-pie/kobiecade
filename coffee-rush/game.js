@@ -6,8 +6,15 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx    = canvas.getContext('2d');
 
-const GAME_W = 480;
-const GAME_H = 640;
+let GAME_W = 480;
+let GAME_H = 640;
+let KOBIE_Y = GAME_H - 70;
+let KOBIE_W = 60;
+
+function recalcLayout() {
+  KOBIE_Y = GAME_H - Math.round(GAME_H * 0.11);
+  KOBIE_W = Math.round(GAME_W * 0.125);
+}
 
 // ── Canvas sizing ─────────────────────────────────────────
 let canvasRect = null;
@@ -17,15 +24,17 @@ function resizeCanvas() {
   const vv = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
   const vw = Math.floor(vv.width), vh = Math.floor(vv.height);
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const reservedTop   = 40;
-  const reservedBelow = isTouch ? 60 : 36;
-  const availW = vw - (isTouch ? 8 : 0);
-  const availH = vh - reservedTop - reservedBelow;
-  const scale = Math.min(availW / GAME_W, availH / GAME_H);
-  const w = Math.floor(GAME_W * scale);
-  const h = Math.floor(GAME_H * scale);
-  const x = Math.floor((vw - w) / 2);
-  const y = reservedTop + Math.floor((availH - h) / 2);
+  let w, h, x, y;
+  if (isTouch) {
+    w = vw; h = vh; x = 0; y = 0;
+  } else {
+    const maxW = 420;
+    const scale = Math.min(maxW / GAME_W, vh / GAME_H);
+    w = Math.floor(GAME_W * scale);
+    h = Math.floor(GAME_H * scale);
+    x = Math.floor((vw - w) / 2);
+    y = Math.floor((vh - h) / 2);
+  }
   canvas.style.width    = w + 'px';
   canvas.style.height   = h + 'px';
   canvas.style.position = 'fixed';
@@ -37,8 +46,10 @@ function resizeCanvas() {
   r.setProperty('--canvas-width',  w + 'px');
   r.setProperty('--canvas-height', h + 'px');
   _rszW = w; _rszH = h; _rszX = x; _rszY = y;
-  if (canvas.width  !== GAME_W) canvas.width  = GAME_W;
-  if (canvas.height !== GAME_H) canvas.height = GAME_H;
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  GAME_W = w; GAME_H = h;
+  recalcLayout();
 }
 
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
@@ -751,8 +762,7 @@ let score      = 0;
 let lives      = 3;
 let frameCount = 0;
 // Kobie
-const KOBIE_Y   = GAME_H - 70;
-const KOBIE_W   = 60;   // half-width of catch zone
+// KOBIE_Y/W declared at top of file
 let kobieX      = GAME_W / 2;
 let kobieTarget = GAME_W / 2;
 let kobieMoving = 0;   // -1 left, 0 still, 1 right — for animation
@@ -771,21 +781,7 @@ let shieldTimer  = 0;
 let _hudScore = -1, _hudLives = -1, _hudBest = -1, _hudPending = false;
 
 function scheduleHUD() {
-  if (_hudPending) return;
-  _hudPending = true;
-  requestAnimationFrame(() => {
-    _hudPending = false;
-    const scoreEl = document.getElementById('score');
-    const livesEl = document.getElementById('lives');
-    const bestEl  = document.getElementById('best');
-    const best    = hsBest('kobie-coffee-rush');
-    if (score !== _hudScore) { scoreEl.textContent = score; _hudScore = score; }
-    if (lives !== _hudLives) {
-      livesEl.textContent = '[ ' + 'I '.repeat(Math.max(0, lives)).trimEnd() + ' ]';
-      _hudLives = lives;
-    }
-    if (best  !== _hudBest)  { bestEl.textContent  = best;  _hudBest  = best;  }
-  });
+  // HUD is drawn on canvas each frame — nothing to do here
 }
 
 // Overlays
@@ -1026,6 +1022,22 @@ function draw() {
     ctx.fillText(f.text, f.x, f.y);
     ctx.restore();
   }
+
+  // On-canvas HUD bar at bottom
+  const HUD_H = 36;
+  ctx.fillStyle = 'rgba(10,10,26,0.75)';
+  ctx.fillRect(0, GAME_H - HUD_H, GAME_W, HUD_H);
+  ctx.strokeStyle = '#ff69b430';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, GAME_H - HUD_H); ctx.lineTo(GAME_W, GAME_H - HUD_H); ctx.stroke();
+  ctx.font = 'bold 13px "Courier New", monospace';
+  ctx.fillStyle = '#ff69b4';
+  ctx.textBaseline = 'middle';
+  const hudY = GAME_H - HUD_H / 2;
+  ctx.textAlign = 'left';   ctx.fillText('SCORE: ' + score, 12, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', GAME_W / 2, hudY);
+  ctx.textAlign = 'right';  ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('kobie-coffee-rush') : 0), GAME_W - 12, hudY);
+  ctx.textBaseline = 'alphabetic';
 }
 
 // ─────────────────────────────────────────────────────────
