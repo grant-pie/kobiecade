@@ -57,7 +57,12 @@ function getAudioCtx() {
 
 fetch('Assets/music.mp3').then(r => r.arrayBuffer())
   .then(buf => { const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); return ac.decodeAudioData(buf); })
-  .then(d => { musicBuffer = d; }).catch(() => {});
+  .then(d => {
+    musicBuffer = d;
+    if (audioUnlocked && !musicSource) startBgMusic();
+    const btn = document.getElementById('start-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'START GAME'; }
+  }).catch(() => {});
 
 function startBgMusic() {
   const ac = getAudioCtx(); if (!musicBuffer) return;
@@ -69,7 +74,7 @@ function startBgMusic() {
 function stopBgMusic() { if (musicSource) { try { musicSource.stop(); } catch(e) {} musicSource = null; } }
 function unlockAudio() {
   if (audioUnlocked) return; audioUnlocked = true;
-  getAudioCtx().resume().then(startBgMusic).catch(() => {});
+  getAudioCtx().resume().catch(() => {});
 }
 document.addEventListener('keydown', unlockAudio, { once: true });
 
@@ -375,6 +380,10 @@ const overlayEl       = document.getElementById('overlay');
 const gameoverOverlay = document.getElementById('gameover-overlay');
 const finalScoreEl    = document.getElementById('final-score-display');
 const startBtn        = document.getElementById('start-btn');
+
+// Disable start button until audio is loaded
+startBtn.disabled    = true;
+startBtn.textContent = 'LOADING...';
 const restartBtn      = document.getElementById('restart-btn');
 
 function hideAllOverlays() { overlayEl.classList.remove('active'); gameoverOverlay.classList.remove('active'); }
