@@ -85,6 +85,7 @@ requestAnimationFrame(() => { resizeCanvas(); canvasRect = canvas.getBoundingCli
 // ─────────────────────────────────────────────────────────
 let audioCtx      = null;
 let musicBuffer   = null;   // decoded AudioBuffer for the MP3
+let musicRawBuf   = null;   // raw ArrayBuffer — held until gesture unlocks AudioContext
 let musicSource   = null;   // currently playing BufferSourceNode
 let musicGain     = null;   // GainNode so we can control volume
 let audioUnlocked = false;  // true after first gesture
@@ -95,20 +96,34 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-// Fetch the MP3 immediately — no gesture needed for fetch itself
+// Fetch raw bytes immediately (no gesture needed for fetch).
+// Decode only AFTER a user gesture so iOS has a live AudioContext.
 fetch('Assets/music.mp3')
   .then(r => r.arrayBuffer())
   .then(buf => {
-    const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    return ac.decodeAudioData(buf);
-  })
-  .then(decoded => {
-    musicBuffer = decoded;
-    if (audioUnlocked && !musicSource) startBgMusic();
+    musicRawBuf = buf;
     const btn = document.getElementById('start-btn');
     if (btn) { btn.disabled = false; btn.textContent = 'FEED THE BEASTS'; }
+    // If the user tapped before the fetch finished, decode now
+    if (audioUnlocked) decodeAndPlay();
   })
-  .catch(() => {}); // silently ignore missing asset during development
+  .catch(() => {
+    // Asset missing in dev — still enable the button
+    const btn = document.getElementById('start-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'FEED THE BEASTS'; }
+  });
+
+function decodeAndPlay() {
+  if (musicBuffer || !musicRawBuf) return;
+  const ac = getAudioCtx();
+  // slice() so the ArrayBuffer isn't neutered on decode
+  ac.decodeAudioData(musicRawBuf.slice(0))
+    .then(decoded => {
+      musicBuffer = decoded;
+      if (audioUnlocked && !musicSource) startBgMusic();
+    })
+    .catch(() => {});
+}
 
 function startBgMusic() {
   const ac = getAudioCtx();
@@ -131,7 +146,11 @@ function stopBgMusic() {
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  getAudioCtx().resume().catch(() => {});
+  const ac = getAudioCtx();
+  ac.resume().then(() => {
+    // Decode now that we have a gesture-unlocked AudioContext
+    if (!musicBuffer && musicRawBuf) decodeAndPlay();
+  }).catch(() => {});
 }
 
 // Unlock on first keyboard press too

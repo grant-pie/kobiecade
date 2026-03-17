@@ -94,7 +94,7 @@ function canvasPoint(clientX, clientY) {
 // ─────────────────────────────────────────────────────────
 //  AUDIO
 // ─────────────────────────────────────────────────────────
-let audioCtx = null, musicBuffer = null, musicSource = null;
+let audioCtx = null, musicBuffer = null, musicRawBuf = null, musicSource = null;
 let musicGain = null, audioUnlocked = false;
 
 function getAudioCtx() {
@@ -103,24 +103,32 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+// Fetch raw bytes immediately (no gesture needed for fetch).
+// Decode only AFTER a user gesture so iOS has a live AudioContext.
 fetch('Assets/music.mp3')
   .then(r => r.arrayBuffer())
   .then(buf => {
-    const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    return ac.decodeAudioData(buf);
-  })
-  .then(d => {
-    musicBuffer = d;
-    if (audioUnlocked && !musicSource) startBgMusic();
-    // Re-enable start button now that audio is ready
+    musicRawBuf = buf;
     const btn = document.getElementById('start-btn');
     if (btn) { btn.disabled = false; btn.textContent = 'ENTER DREAMWORLD'; }
+    // If the user tapped before fetch finished, decode now
+    if (audioUnlocked) decodeAndPlay();
   })
   .catch(() => {
-    // Even on failure, unblock the button
     const btn = document.getElementById('start-btn');
     if (btn) { btn.disabled = false; btn.textContent = 'ENTER DREAMWORLD'; }
   });
+
+function decodeAndPlay() {
+  if (musicBuffer || !musicRawBuf) return;
+  const ac = getAudioCtx();
+  ac.decodeAudioData(musicRawBuf.slice(0))
+    .then(decoded => {
+      musicBuffer = decoded;
+      if (audioUnlocked && !musicSource) startBgMusic();
+    })
+    .catch(() => {});
+}
 
 function startBgMusic() {
   const ac = getAudioCtx();
@@ -143,7 +151,10 @@ function stopBgMusic() {
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  getAudioCtx().resume().then(startBgMusic).catch(() => {});
+  const ac = getAudioCtx();
+  ac.resume().then(() => {
+    if (!musicBuffer && musicRawBuf) decodeAndPlay();
+  }).catch(() => {});
 }
 document.addEventListener('keydown', unlockAudio, { once: true });
 

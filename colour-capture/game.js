@@ -57,7 +57,7 @@ function canvasPoint(clientX, clientY) {
 // ─────────────────────────────────────────────────────────
 //  AUDIO
 // ─────────────────────────────────────────────────────────
-let audioCtx = null, musicBuffer = null, musicSource = null, musicGain = null, audioUnlocked = false;
+let audioCtx = null, musicBuffer = null, musicRawBuf = null, musicSource = null, musicGain = null, audioUnlocked = false;
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -65,14 +65,29 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+// Fetch raw bytes immediately (no gesture needed for fetch).
+// Decode only AFTER a user gesture so iOS has a live AudioContext.
 fetch('Assets/music.mp3').then(r => r.arrayBuffer())
-  .then(buf => { const ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); return ac.decodeAudioData(buf); })
-  .then(d => {
-    musicBuffer = d;
-    if (audioUnlocked && !musicSource) startBgMusic();
+  .then(buf => {
+    musicRawBuf = buf;
     const btn = document.getElementById('start-btn');
     if (btn) { btn.disabled = false; btn.textContent = 'START GAME'; }
-  }).catch(() => {});
+    if (audioUnlocked) decodeAndPlay();
+  }).catch(() => {
+    const btn = document.getElementById('start-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'START GAME'; }
+  });
+
+function decodeAndPlay() {
+  if (musicBuffer || !musicRawBuf) return;
+  const ac = getAudioCtx();
+  ac.decodeAudioData(musicRawBuf.slice(0))
+    .then(decoded => {
+      musicBuffer = decoded;
+      if (audioUnlocked && !musicSource) startBgMusic();
+    })
+    .catch(() => {});
+}
 
 function startBgMusic() {
   const ac = getAudioCtx(); if (!musicBuffer) return;
@@ -84,7 +99,10 @@ function startBgMusic() {
 function stopBgMusic() { if (musicSource) { try { musicSource.stop(); } catch(e) {} musicSource = null; } }
 function unlockAudio() {
   if (audioUnlocked) return; audioUnlocked = true;
-  getAudioCtx().resume().catch(() => {});
+  const ac = getAudioCtx();
+  ac.resume().then(() => {
+    if (!musicBuffer && musicRawBuf) decodeAndPlay();
+  }).catch(() => {});
 }
 document.addEventListener('keydown', unlockAudio, { once: true });
 
