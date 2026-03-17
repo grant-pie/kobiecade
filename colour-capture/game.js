@@ -6,8 +6,12 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx    = canvas.getContext('2d');
 
-const GAME_W = 480;
-const GAME_H = 640;
+let GAME_W = 480;
+let GAME_H = 640;
+
+function recalcLayout() {
+  // Nothing extra needed — drawTargetPanel uses GAME_W/H directly
+}
 
 // ── Canvas sizing ─────────────────────────────────────────
 let canvasRect = null;
@@ -17,21 +21,27 @@ function resizeCanvas() {
   const vv = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
   const vw = Math.floor(vv.width), vh = Math.floor(vv.height);
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const reservedTop   = 40;
-  const reservedBelow = isTouch ? 60 : 36;
-  const availW = vw - (isTouch ? 8 : 0);
-  const availH = vh - reservedTop - reservedBelow;
-  const scale = Math.min(availW / GAME_W, availH / GAME_H);
-  const w = Math.floor(GAME_W * scale), h = Math.floor(GAME_H * scale);
-  const x = Math.floor((vw - w) / 2), y = reservedTop + Math.floor((availH - h) / 2);
+  let w, h, x, y;
+  if (isTouch) {
+    w = vw; h = vh; x = 0; y = 0;
+  } else {
+    const maxW = 420;
+    const scale = Math.min(maxW / GAME_W, vh / GAME_H);
+    w = Math.floor(GAME_W * scale);
+    h = Math.floor(GAME_H * scale);
+    x = Math.floor((vw - w) / 2);
+    y = Math.floor((vh - h) / 2);
+  }
   canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
   canvas.style.position = 'fixed'; canvas.style.left = x + 'px'; canvas.style.top = y + 'px';
   const r = document.documentElement.style;
   r.setProperty('--canvas-left', x + 'px'); r.setProperty('--canvas-top', y + 'px');
   r.setProperty('--canvas-width', w + 'px'); r.setProperty('--canvas-height', h + 'px');
   _rszW = w; _rszH = h; _rszX = x; _rszY = y;
-  if (canvas.width !== GAME_W) canvas.width = GAME_W;
-  if (canvas.height !== GAME_H) canvas.height = GAME_H;
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  GAME_W = w; GAME_H = h;
+  recalcLayout();
 }
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
@@ -357,20 +367,7 @@ let floatTexts    = [];
 let _hudScore = -1, _hudBest = -1, _hudLives = -1, _hudPending = false;
 
 function scheduleHUD() {
-  if (_hudPending) return; _hudPending = true;
-  requestAnimationFrame(() => {
-    _hudPending = false;
-    const scoreEl = document.getElementById('score');
-    const bestEl  = document.getElementById('best');
-    const livesEl = document.getElementById('lives');
-    const best = hsBest('colour-capture');
-    if (score !== _hudScore) { scoreEl.textContent = score; _hudScore = score; }
-    if (best  !== _hudBest)  { bestEl.textContent  = best;  _hudBest  = best;  }
-    if (lives !== _hudLives) {
-      livesEl.textContent = '[ ' + 'I '.repeat(Math.max(0, lives)).trimEnd() + ' ]';
-      _hudLives = lives;
-    }
-  });
+  // HUD is drawn on canvas each frame — nothing to do here
 }
 
 function addFloatText(x, y, text, color) { floatTexts.push({ x, y, text, color, life: 1 }); }
@@ -551,28 +548,35 @@ function drawLives() {
 }
 
 function drawTargetPanel() {
+  const panelH  = Math.round(GAME_H * 0.14);
+  const swatchW = Math.round(GAME_W * 0.5);
+  const swatchH = Math.round(panelH * 0.55);
+  const swatchX = GAME_W/2 - swatchW/2;
+  const swatchY = Math.round(panelH * 0.22);
+
   // Panel background
   ctx.fillStyle = '#111128';
-  ctx.beginPath(); ctx.roundRect(0, 0, GAME_W, 90, [0,0,12,12]); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(0, 0, GAME_W, panelH, [0,0,12,12]); ctx.fill();
   ctx.strokeStyle = '#ff69b430'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0,90); ctx.lineTo(GAME_W,90); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, panelH); ctx.lineTo(GAME_W, panelH); ctx.stroke();
 
-  // "CAPTURE" label
-  ctx.fillStyle = '#ff69b4aa'; ctx.font = '10px "Courier New", monospace';
+  // "CAPTURE THIS COLOUR" label
+  ctx.fillStyle = '#ff69b4aa';
+  ctx.font = `${Math.round(GAME_W * 0.022)}px "Courier New", monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('CAPTURE THIS COLOUR', GAME_W/2, 18);
+  ctx.fillText('CAPTURE THIS COLOUR', GAME_W/2, Math.round(panelH * 0.18));
 
-  // Colour swatch — big filled rounded rect
-  const swatchW = 160, swatchH = 44, swatchX = GAME_W/2 - swatchW/2, swatchY = 26;
+  // Colour swatch
   ctx.fillStyle = targetColour.hex;
   ctx.beginPath(); ctx.roundRect(swatchX, swatchY, swatchW, swatchH, 8); ctx.fill();
-  // Shine
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
   ctx.beginPath(); ctx.roundRect(swatchX + 6, swatchY + 5, swatchW - 12, 10, 4); ctx.fill();
-  // Colour name — centred in swatch, large with strong outline
-  const nameY = swatchY + swatchH/2 + 8;
-  const nameCX = swatchX + swatchW/2;
-  ctx.font = 'bold 22px "Courier New", monospace';
+
+  // Colour name
+  const nameY  = swatchY + swatchH/2 + Math.round(swatchH * 0.2);
+  const nameCX = GAME_W / 2;
+  const nameFontSize = Math.round(GAME_W * 0.055);
+  ctx.font = `bold ${nameFontSize}px "Courier New", monospace`;
   ctx.lineWidth = 5;
   ctx.strokeStyle = 'rgba(0,0,0,0.75)';
   ctx.strokeText(targetColour.name, nameCX, nameY);
@@ -581,7 +585,22 @@ function drawTargetPanel() {
   ctx.fillText(targetColour.name, nameCX, nameY);
   ctx.shadowBlur = 0;
 
-  ctx.textAlign = 'left'; // reset to default
+  // Score / lives / best bar at bottom
+  const HUD_H = Math.round(GAME_H * 0.056);
+  ctx.fillStyle = 'rgba(10,10,26,0.75)';
+  ctx.fillRect(0, GAME_H - HUD_H, GAME_W, HUD_H);
+  ctx.strokeStyle = '#ff69b430'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, GAME_H - HUD_H); ctx.lineTo(GAME_W, GAME_H - HUD_H); ctx.stroke();
+  const hudFontSize = Math.round(GAME_W * 0.03);
+  ctx.font = `bold ${hudFontSize}px "Courier New", monospace`;
+  ctx.fillStyle = '#ff69b4';
+  ctx.textBaseline = 'middle';
+  const hudY = GAME_H - HUD_H / 2;
+  ctx.textAlign = 'left';   ctx.fillText('SCORE: ' + score, 12, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', GAME_W / 2, hudY);
+  ctx.textAlign = 'right';  ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('colour-capture') : 0), GAME_W - 12, hudY);
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
 }
 
 function draw() {
