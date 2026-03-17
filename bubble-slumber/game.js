@@ -14,16 +14,31 @@ let canvasRect = null;
 let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
 function resizeCanvas() {
-  const vw = window.innerWidth, vh = window.innerHeight;
+  const vv = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
+  const vw = Math.floor(vv.width), vh = Math.floor(vv.height);
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
   const reservedTop   = 40;
   const reservedBelow = isTouch ? 60 : 36;
   const availH = vh - reservedTop - reservedBelow;
-  const scale = Math.min(vw / GAME_W, availH / GAME_H);
-  const w = Math.floor(GAME_W * scale);
-  const h = Math.floor(GAME_H * scale);
-  const x = Math.floor((vw - w) / 2);
-  const y = reservedTop + Math.floor((availH - h) / 2);
+
+  let w, h, x, y;
+  if (isTouch) {
+    // Mobile: fill the full viewport width, scale height proportionally
+    w = vw;
+    h = Math.min(Math.floor(w * GAME_H / GAME_W), availH);
+    w = Math.floor(h * GAME_W / GAME_H); // recalc width in case height was capped
+    x = Math.floor((vw - w) / 2);
+    y = reservedTop + Math.floor((availH - h) / 2);
+  } else {
+    // Desktop: cap at 420px wide, centred
+    const maxW = 420;
+    const scale = Math.min(maxW / GAME_W, availH / GAME_H);
+    w = Math.floor(GAME_W * scale);
+    h = Math.floor(GAME_H * scale);
+    x = Math.floor((vw - w) / 2);
+    y = reservedTop + Math.floor((availH - h) / 2);
+  }
+
   canvas.style.width    = w + 'px';
   canvas.style.height   = h + 'px';
   canvas.style.position = 'fixed';
@@ -40,8 +55,10 @@ function resizeCanvas() {
 }
 
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
+window.addEventListener('load', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 resizeCanvas();
-requestAnimationFrame(() => { canvasRect = canvas.getBoundingClientRect(); });
+requestAnimationFrame(() => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
 
 function canvasPoint(clientX, clientY) {
   const rect  = canvasRect || canvas.getBoundingClientRect();
@@ -265,12 +282,6 @@ function drawEmailBubble(cx, cy, r, colIdx) {
     ctx.beginPath(); ctx.arc(cx, cy, r*0.1, 0, Math.PI*2);
     ctx.fillStyle = c.fill + 'cc'; ctx.fill();
   }
-
-  // Category label
-  ctx.font = `bold ${Math.max(6, r * 0.28)}px 'Courier New', monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(255,255,255,0.80)';
-  ctx.fillText(c.label, cx, cy + r * 0.82);
 
   ctx.restore();
 }

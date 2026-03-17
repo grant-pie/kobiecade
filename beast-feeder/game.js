@@ -37,13 +37,26 @@ function resizeCanvas() {
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
   const reservedTop   = 40;
   const reservedBelow = isTouch ? 60 : 36;
-  const availW = vw - (isTouch ? 8 : 0); // small horizontal margin on touch
   const availH = vh - reservedTop - reservedBelow;
-  const scale  = Math.min(availW / GAME_W, availH / GAME_H);
-  const w = Math.floor(GAME_W * scale);
-  const h = Math.floor(GAME_H * scale);
-  const x = Math.floor((vw - w) / 2);
-  const y = reservedTop + Math.floor((availH - h) / 2);
+
+  let w, h, x, y;
+  if (isTouch) {
+    // Mobile: fill full viewport width, scale height proportionally
+    w = vw;
+    h = Math.min(Math.floor(w * GAME_H / GAME_W), availH);
+    w = Math.floor(h * GAME_W / GAME_H);
+    x = Math.floor((vw - w) / 2);
+    y = reservedTop + Math.floor((availH - h) / 2);
+  } else {
+    // Desktop: cap at 560px wide (comfortable landscape size)
+    const maxW = 560;
+    const scale = Math.min(maxW / GAME_W, availH / GAME_H);
+    w = Math.floor(GAME_W * scale);
+    h = Math.floor(GAME_H * scale);
+    x = Math.floor((vw - w) / 2);
+    y = reservedTop + Math.floor((availH - h) / 2);
+  }
+
   canvas.style.width    = w + 'px';
   canvas.style.height   = h + 'px';
   canvas.style.position = 'fixed';
@@ -56,7 +69,6 @@ function resizeCanvas() {
   root.setProperty('--canvas-height', h + 'px');
   _rszW = w; _rszH = h; _rszX = x; _rszY = y;
 
-  // Only clears the canvas if dimensions actually change
   if (canvas.width  !== GAME_W) canvas.width  = GAME_W;
   if (canvas.height !== GAME_H) canvas.height = GAME_H;
 }

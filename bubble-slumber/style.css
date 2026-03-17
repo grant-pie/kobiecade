@@ -54,7 +54,7 @@ canvas {
   transform: translateZ(0);
 }
 
-#ui {
+#ui_hidden_placeholder {
   position: fixed;
   left:  var(--canvas-left,  0px);
   width: var(--canvas-width, 100%);
@@ -214,3 +214,6 @@ canvas {
 .hs-empty { font-size: 11px; color: #cc88ff60; letter-spacing: 2px; text-align: center; padding: 10px 0; }
 
 .hs-spacer { width: 16px; }
+
+/* HUD is now drawn on canvas */
+#ui { display: none !important; }
