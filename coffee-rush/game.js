@@ -616,26 +616,54 @@ function drawKobie(x, y, moving) {
   ctx.fillStyle = skinCol;
   ctx.fillRect(-4, -30, 8, 12);
 
-  // Head — hair back
+  // Head — hair back layer (full ellipse behind head)
   ctx.fillStyle = hairCol;
   ctx.beginPath();
-  ctx.ellipse(0, -44, 18, 20, 0, 0, Math.PI*2);
+  ctx.ellipse(0, -44, 19, 22, 0, 0, Math.PI*2);
   ctx.fill();
 
-  // Curly hair sides
-  ctx.lineWidth = 5;
+  // Long hair falling down sides
+  ctx.fillStyle = hairCol;
+  ctx.beginPath();
+  ctx.moveTo(-14, -50);
+  ctx.bezierCurveTo(-22, -36, -24, -16, -18, 2);
+  ctx.bezierCurveTo(-22, 6, -20, 12, -14, 10);
+  ctx.bezierCurveTo(-10, 16, -8, 10, -12, 4);
+  ctx.bezierCurveTo(-16, -8, -14, -22, -10, -34);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(14, -50);
+  ctx.bezierCurveTo(22, -36, 24, -16, 18, 2);
+  ctx.bezierCurveTo(22, 6, 20, 12, 14, 10);
+  ctx.bezierCurveTo(10, 16, 8, 10, 12, 4);
+  ctx.bezierCurveTo(16, -8, 14, -22, 10, -34);
+  ctx.closePath();
+  ctx.fill();
+
+  // Individual curls
   ctx.strokeStyle = hairCol;
+  ctx.lineWidth = 4;
   ctx.lineCap = 'round';
-  for (const s of [-1, 1]) {
+  [
+    [[-16, -12], [-22, -6], [-18, 2],  [-14, -2]],
+    [[-15, -2],  [-22, 4],  [-17, 12], [-12, 8]],
+    [[16,  -12], [22, -6],  [18,  2],  [14, -2]],
+    [[15,  -2],  [22, 4],   [17,  12], [12,  8]],
+  ].forEach(pts => {
     ctx.beginPath();
-    ctx.moveTo(s*14, -50);
-    ctx.bezierCurveTo(s*22, -36, s*26, -16, s*20, 0);
+    ctx.moveTo(...pts[0]);
+    ctx.bezierCurveTo(...pts[1], ...pts[2], ...pts[3]);
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(s*18, -20);
-    ctx.bezierCurveTo(s*24, -8, s*20, 8, s*14, 14);
-    ctx.stroke();
-  }
+  });
+
+  // Hair highlight
+  ctx.strokeStyle = '#555553';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-6, -60); ctx.bezierCurveTo(-2, -56, 2, -56, 6, -60);
+  ctx.stroke();
 
   // Face
   ctx.fillStyle = skinCol;
