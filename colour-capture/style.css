@@ -129,3 +129,29 @@ canvas {
 
 /* HUD drawn on canvas */
 #ui { display: none !important; }
+/* ── MOBILE: iPhone / small screens ──────────────────── */
+@media (max-width: 500px) {
+  .overlay-box {
+    padding: 24px 20px;
+  }
+
+  .overlay-sub {
+    font-size: 11px;
+    margin-bottom: 14px;
+  }
+
+  .how-to {
+    padding: 10px 12px;
+    margin-bottom: 16px;
+  }
+
+  .how-to p {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .menu-btn {
+    padding: 10px 24px;
+    font-size: 11px;
+  }
+}
