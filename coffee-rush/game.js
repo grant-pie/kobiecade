@@ -131,6 +131,8 @@ function unlockAudio() {
   }).catch(() => {});
 }
 document.addEventListener('keydown', unlockAudio, { once: true });
+// Catch any tap anywhere on the page as an unlock opportunity (iOS belt-and-braces)
+document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
 
 function playTone(freq, endFreq, dur, type, gain, delay = 0) {
   const ac = getAudioCtx(), t = ac.currentTime + delay;
@@ -1160,6 +1162,10 @@ canvas.addEventListener('click', () => unlockAudio());
 // ─────────────────────────────────────────────────────────
 //  OVERLAY BUTTONS
 // ─────────────────────────────────────────────────────────
+// iOS requires AudioContext unlock on touchstart, not click
+startBtn.addEventListener('touchstart', () => { unlockAudio(); }, { passive: true });
+restartBtn.addEventListener('touchstart', () => { unlockAudio(); }, { passive: true });
+
 startBtn.addEventListener('click', () => {
   unlockAudio();
   hideAllOverlays();
