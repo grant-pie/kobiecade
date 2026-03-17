@@ -411,24 +411,36 @@ function drawKitten(x, y, size, colorIdx, frame) {
 
   // Hungry speech bubble
   if (frame % 120 < 30) {
+    const bubbleText = 'TREAT!';
+    const fontSize = Math.max(10, size * 0.18);
+    ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+    const textW = ctx.measureText(bubbleText).width;
+    const padX = size * 0.12;
+    const padY = size * 0.1;
+    const bubbleW = textW + padX * 2;
+    const bubbleH = fontSize + padY * 2;
+    const bubbleX = -bubbleW / 2;
+    const bubbleTop = -size * 0.58 - bubbleH;
+    const bubbleMidX = bubbleX + bubbleW / 2;
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#ff69b4';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(-size * 0.2, -size * 0.85, size * 0.6, size * 0.28, 4);
+    ctx.roundRect(bubbleX, bubbleTop, bubbleW, bubbleH, 4);
     ctx.fill();
     ctx.stroke();
     // Tail of bubble
     ctx.beginPath();
-    ctx.moveTo(-size * 0.05, -size * 0.57);
-    ctx.lineTo(-size * 0.14, -size * 0.48);
-    ctx.lineTo(size * 0.05, -size * 0.57);
+    ctx.moveTo(bubbleMidX - size * 0.06, bubbleTop + bubbleH);
+    ctx.lineTo(bubbleMidX - size * 0.12, bubbleTop + bubbleH + size * 0.1);
+    ctx.lineTo(bubbleMidX + size * 0.06, bubbleTop + bubbleH);
     ctx.fillStyle = '#fff';
     ctx.fill();
-    ctx.font = `bold ${size * 0.18}px 'Courier New', monospace`;
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ff69b4';
-    ctx.fillText('TREAT!', size * 0.1, -size * 0.64);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(bubbleText, bubbleMidX, bubbleTop + bubbleH / 2);
+    ctx.textBaseline = 'alphabetic';
   }
 
   ctx.restore();
@@ -538,23 +550,36 @@ function drawDog(x, y, size, colorIdx, frame) {
 
   // Hungry speech bubble
   if (frame % 120 < 30) {
+    const bubbleText = 'BISCUIT!';
+    const fontSize = Math.max(10, size * 0.18);
+    ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+    const textW = ctx.measureText(bubbleText).width;
+    const padX = size * 0.12;
+    const padY = size * 0.1;
+    const bubbleW = textW + padX * 2;
+    const bubbleH = fontSize + padY * 2;
+    const bubbleX = -bubbleW / 2;
+    const bubbleTop = -size * 0.58 - bubbleH;
+    const bubbleMidX = bubbleX + bubbleW / 2;
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#ff69b4';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(-size * 0.25, -size * 0.85, size * 0.72, size * 0.28, 4);
+    ctx.roundRect(bubbleX, bubbleTop, bubbleW, bubbleH, 4);
     ctx.fill();
     ctx.stroke();
+    // Tail of bubble
     ctx.beginPath();
-    ctx.moveTo(-size * 0.05, -size * 0.57);
-    ctx.lineTo(-size * 0.14, -size * 0.48);
-    ctx.lineTo(size * 0.05,  -size * 0.57);
+    ctx.moveTo(bubbleMidX - size * 0.06, bubbleTop + bubbleH);
+    ctx.lineTo(bubbleMidX - size * 0.12, bubbleTop + bubbleH + size * 0.1);
+    ctx.lineTo(bubbleMidX + size * 0.06, bubbleTop + bubbleH);
     ctx.fillStyle = '#fff';
     ctx.fill();
-    ctx.font = `bold ${size * 0.18}px 'Courier New', monospace`;
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ff69b4';
-    ctx.fillText('BISCUIT!', size * 0.1, -size * 0.64);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(bubbleText, bubbleMidX, bubbleTop + bubbleH / 2);
+    ctx.textBaseline = 'alphabetic';
   }
 
   ctx.restore();
@@ -939,10 +964,11 @@ function draw() {
   ctx.fillStyle = '#ff69b4';
   ctx.textBaseline = 'middle';
   const hudY = GAME_H - HUD_H / 2;
-  ctx.textAlign = 'left';   ctx.fillText('SCORE: ' + score, 12, hudY);
-  ctx.textAlign = 'center'; ctx.fillText('WAVE: ' + wave, GAME_W / 2, hudY);
-  ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', GAME_W * 0.75, hudY);
-  ctx.textAlign = 'right';  ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('hungry-hungry-kittens') : 0), GAME_W - 12, hudY);
+  const q = GAME_W / 4;
+  ctx.textAlign = 'center'; ctx.fillText('SCORE: ' + score, q * 0.5, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('WAVE: ' + wave, q * 1.5, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', q * 2.5, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('hungry-hungry-kittens') : 0), q * 3.5, hudY);
   ctx.textBaseline = 'alphabetic';
 }
 

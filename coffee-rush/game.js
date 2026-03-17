@@ -661,6 +661,82 @@ function drawKobie(x, y, moving) {
   ctx.beginPath(); ctx.moveTo(-18, -12); ctx.lineTo(-26, 4); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(18, -12);  ctx.lineTo(26, 4);  ctx.stroke();
 
+  // ── Tattoos ───────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = '#7a5c9a';
+  ctx.fillStyle   = '#7a5c9a';
+  ctx.lineWidth   = 1;
+  ctx.lineCap     = 'round';
+
+  // Dog tattoo — upper left arm (~-21, -8)
+  ctx.save();
+  ctx.translate(-21, -8);
+  ctx.scale(0.55, 0.55);
+  // body
+  ctx.beginPath(); ctx.ellipse(0, 2, 4, 3, 0, 0, Math.PI*2); ctx.stroke();
+  // head
+  ctx.beginPath(); ctx.arc(-3, -3, 3, 0, Math.PI*2); ctx.stroke();
+  // ears
+  ctx.beginPath(); ctx.moveTo(-5, -5); ctx.quadraticCurveTo(-8, -3, -6, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-1, -6); ctx.quadraticCurveTo(1, -8, 2, -5); ctx.stroke();
+  // tail
+  ctx.beginPath(); ctx.moveTo(4, 0); ctx.quadraticCurveTo(8, -3, 7, -6); ctx.stroke();
+  // legs
+  ctx.beginPath();
+  ctx.moveTo(-2, 5); ctx.lineTo(-3, 9);
+  ctx.moveTo(2, 5);  ctx.lineTo(3, 9);
+  ctx.stroke();
+  // eye dot
+  ctx.beginPath(); ctx.arc(-4, -3.5, 0.8, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Teacup tattoo — upper right arm (~19, -9)
+  ctx.save();
+  ctx.translate(21, -8);
+  ctx.scale(0.55, 0.55);
+  // cup body
+  ctx.beginPath();
+  ctx.moveTo(-5, -2); ctx.lineTo(-4, 4); ctx.lineTo(4, 4); ctx.lineTo(5, -2); ctx.closePath();
+  ctx.stroke();
+  // rim line
+  ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(5, -2); ctx.stroke();
+  // handle
+  ctx.beginPath(); ctx.arc(6.5, 1.5, 2.2, -0.7, 0.7); ctx.stroke();
+  // steam squiggle
+  ctx.beginPath();
+  ctx.moveTo(-1, -3); ctx.quadraticCurveTo(1, -5, -1, -7);
+  ctx.moveTo(1.5, -3); ctx.quadraticCurveTo(3.5, -5, 1.5, -7);
+  ctx.stroke();
+  ctx.restore();
+
+  // Snail tattoo — lower right arm (~24, 0)
+  ctx.save();
+  ctx.translate(24.5, 1);
+  ctx.scale(0.55, 0.55);
+  // shell: small spiral
+  ctx.beginPath();
+  ctx.arc(0, 0, 4.5, 0, Math.PI * 1.7);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0.5, 0.3, 2.2, 0, Math.PI * 1.4);
+  ctx.stroke();
+  // head/body extending left
+  ctx.beginPath();
+  ctx.moveTo(-4.5, 1); ctx.quadraticCurveTo(-7, 2, -9, 1);
+  ctx.stroke();
+  // antennae
+  ctx.beginPath();
+  ctx.moveTo(-7, 1); ctx.lineTo(-8.5, -2);
+  ctx.moveTo(-8.5, 1); ctx.lineTo(-10, -1.5);
+  ctx.stroke();
+  // antenna dots
+  ctx.beginPath(); ctx.arc(-8.5, -2.3, 0.8, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-10.2, -1.8, 0.8, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+  // ─────────────────────────────────────────────────────────
+
   // Tray
   ctx.fillStyle = '#c8914a';
   ctx.beginPath();

@@ -604,6 +604,37 @@ function makeStars(n, w, h) {
     ctx.strokeStyle = skinCol; ctx.lineWidth = 7; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-18,-12); ctx.lineTo(-26,4); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(18, -12); ctx.lineTo(26, 4); ctx.stroke();
+    // Tattoos
+    ctx.save();
+    ctx.strokeStyle = '#7a5c9a'; ctx.fillStyle = '#7a5c9a';
+    ctx.lineWidth = 1; ctx.lineCap = 'round';
+    // Dog — upper left arm
+    ctx.save(); ctx.translate(-21, -8); ctx.scale(0.75, 0.75);
+    ctx.beginPath(); ctx.ellipse(0,2,4,3,0,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-3,-3,3,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-5,-5); ctx.quadraticCurveTo(-8,-3,-6,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-1,-6); ctx.quadraticCurveTo(1,-8,2,-5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4,0); ctx.quadraticCurveTo(8,-3,7,-6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-2,5); ctx.lineTo(-3,9); ctx.moveTo(2,5); ctx.lineTo(3,9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-4,-3.5,0.9,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    // Teacup — upper right arm
+    ctx.save(); ctx.translate(21, -8); ctx.scale(0.75, 0.75);
+    ctx.beginPath(); ctx.moveTo(-5,-2); ctx.lineTo(-4,4); ctx.lineTo(4,4); ctx.lineTo(5,-2); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-5,-2); ctx.lineTo(5,-2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6.5,1.5,2.2,-0.7,0.7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-1,-3); ctx.quadraticCurveTo(1,-5,-1,-7); ctx.moveTo(1.5,-3); ctx.quadraticCurveTo(3.5,-5,1.5,-7); ctx.stroke();
+    ctx.restore();
+    // Snail — lower right arm
+    ctx.save(); ctx.translate(24.5, 1); ctx.scale(0.75, 0.75);
+    ctx.beginPath(); ctx.arc(0,0,4.5,0,Math.PI*1.7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0.5,0.3,2.2,0,Math.PI*1.4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4.5,1); ctx.quadraticCurveTo(-7,2,-9,1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-7,1); ctx.lineTo(-8.5,-2); ctx.moveTo(-8.5,1); ctx.lineTo(-10,-1.5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-8.5,-2.3,0.8,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-10.2,-1.8,0.8,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.restore();
     // Tray
     ctx.fillStyle = '#c8914a';
     ctx.beginPath(); ctx.roundRect(-30,2,60,8,3); ctx.fill();
