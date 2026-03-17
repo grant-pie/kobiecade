@@ -203,7 +203,7 @@ function makeStars(n, w, h) {
   requestAnimationFrame(tick);
 })();
 
-// ── Kitten Khaos preview ────────────────────────
+// ── Beast Feeder preview ────────────────────────
 (function () {
   const canvas = document.getElementById('preview-kittens');
   if (!canvas) return;
@@ -212,28 +212,44 @@ function makeStars(n, w, h) {
 
   const stars = makeStars(40, W, H);
 
-  const KITTEN_COLORS     = ['#f4a460', '#aaaaaa', '#ff9999', '#cccccc'];
-  const KITTEN_EAR_COLORS = ['#ffb6c1', '#bbbbbb', '#ffaaaa', '#dddddd'];
+  const KITTEN_COLORS     = ['#f4a460', '#888', '#ff9999', '#ccc', '#c8a882'];
+  const KITTEN_EAR_COLORS = ['#ffb6c1', '#aaa', '#ffaaaa', '#ddd', '#d4b896'];
+  const DOG_COLORS        = ['#c8a05a', '#8B5e3c', '#d4c4a0', '#555', '#e8d0a0'];
+  const DOG_SNOUT_COLORS  = ['#d4b070', '#aa7050', '#e0d0b0', '#777', '#f0e0c0'];
 
-  // Kittens orbiting the centre launcher
-  const kittens = Array.from({ length: 5 }, (_, i) => ({
-    angle: (i / 5) * Math.PI * 2,
-    radius: 44 + (i % 2) * 14,
-    speed: 0.008 + i * 0.003,
-    size: 14 + (i % 3) * 3,
-    colorIdx: i % KITTEN_COLORS.length,
-    frame: i * 20,
-  }));
+  function darkenColor(hex, amt) {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return '#' + [r,g,b].map(v => Math.max(0,Math.round(v*(1-amt))).toString(16).padStart(2,'0')).join('');
+  }
 
-  // Bottle projectile
-  const projectile = { active: false, x: 0, y: 0, vx: 0, vy: 0, angle: 0 };
-  let shootTimer = 0;
-
-  function drawMiniKitten(x, y, size, cIdx, f) {
-    const c  = KITTEN_COLORS[cIdx];
-    const ec = KITTEN_EAR_COLORS[cIdx];
+  // Biscuit launcher at bottom-centre
+  function drawMiniBiscuit(x, y, angle, large) {
+    const rx = large ? 11 : 6, ry = large ? 9 : 5;
     ctx.save();
     ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = '#e8b84b';
+    ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#c8942a'; ctx.lineWidth = large ? 1.5 : 1;
+    ctx.stroke();
+    ctx.fillStyle = '#f5c84a';
+    ctx.beginPath(); ctx.ellipse(0, 0, rx * 0.77, ry * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c8942a';
+    const dots = large
+      ? [[-4,-3],[4,-3],[0,3],[-7,0],[7,0]]
+      : [[-2,-1.5],[2,-1.5],[0,2]];
+    for (const [dx, dy] of dots) {
+      ctx.beginPath(); ctx.arc(dx, dy, large ? 1.2 : 0.8, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawMiniKitten(x, y, size, cIdx, f) {
+    const c  = KITTEN_COLORS[cIdx % KITTEN_COLORS.length];
+    const ec = KITTEN_EAR_COLORS[cIdx % KITTEN_COLORS.length];
+    const bob = Math.sin(f * 0.15) * 1.5;
+    ctx.save();
+    ctx.translate(x, y + bob);
     // Body
     ctx.fillStyle = c;
     ctx.beginPath();
@@ -248,14 +264,12 @@ function makeStars(n, w, h) {
     ctx.moveTo(-size * 0.22, -size * 0.34);
     ctx.lineTo(-size * 0.30, -size * 0.52);
     ctx.lineTo(-size * 0.10, -size * 0.36);
-    ctx.closePath();
-    ctx.fill();
+    ctx.closePath(); ctx.fill();
     ctx.beginPath();
     ctx.moveTo(size * 0.22, -size * 0.34);
     ctx.lineTo(size * 0.30, -size * 0.52);
     ctx.lineTo(size * 0.10, -size * 0.36);
-    ctx.closePath();
-    ctx.fill();
+    ctx.closePath(); ctx.fill();
     // Inner ears
     ctx.fillStyle = ec;
     ctx.beginPath();
@@ -266,83 +280,171 @@ function makeStars(n, w, h) {
     ctx.closePath(); ctx.fill();
     // Eyes
     ctx.fillStyle = '#222';
-    ctx.beginPath(); ctx.arc(-size*0.09, -size*0.18, size*0.06, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(size*0.09,  -size*0.18, size*0.06, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-size*0.09, -size*0.18, size*0.065, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(size*0.09,  -size*0.18, size*0.065, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(-size*0.07, -size*0.20, size*0.02, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(size*0.11,  -size*0.20, size*0.02, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-size*0.07, -size*0.20, size*0.022, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(size*0.11,  -size*0.20, size*0.022, 0, Math.PI*2); ctx.fill();
+    // Nose
+    ctx.fillStyle = '#ff9999';
+    ctx.beginPath(); ctx.arc(0, -size*0.09, size*0.04, 0, Math.PI*2); ctx.fill();
+    // Tail
+    ctx.strokeStyle = c; ctx.lineWidth = size * 0.08; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(size * 0.3, size * 0.28);
+    ctx.quadraticCurveTo(size * 0.55, size * 0.1, size * 0.5, -size * 0.1 + Math.sin(f * 0.12) * size * 0.15);
+    ctx.stroke();
     ctx.restore();
   }
 
-  function drawMiniBottle(x, y, angle) {
+  function drawMiniDog(x, y, size, cIdx, f) {
+    const c  = DOG_COLORS[cIdx % DOG_COLORS.length];
+    const sc = DOG_SNOUT_COLORS[cIdx % DOG_SNOUT_COLORS.length];
+    const bob = Math.sin(f * 0.15) * 1.5;
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.fillStyle = '#e8f4f8';
-    ctx.strokeStyle = '#ff69b4';
-    ctx.lineWidth = 1;
+    ctx.translate(x, y + bob);
+    // Body
+    ctx.fillStyle = c;
     ctx.beginPath();
-    ctx.roundRect(-3, -9, 6, 11, 2);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ff69b4';
-    ctx.beginPath();
-    ctx.roundRect(-3, -13, 6, 4, 1);
+    ctx.ellipse(0, size * 0.2, size * 0.42, size * 0.32, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Head
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.12, size * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    // Floppy ears
+    ctx.fillStyle = darkenColor(c, 0.15);
+    ctx.beginPath(); ctx.ellipse(-size*0.38, -size*0.05, size*0.13, size*0.24, 0.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(size*0.38,  -size*0.05, size*0.13, size*0.24,-0.3, 0, Math.PI*2); ctx.fill();
+    // Snout
+    ctx.fillStyle = sc;
+    ctx.beginPath(); ctx.ellipse(0, -size*0.02, size*0.2, size*0.15, 0, 0, Math.PI*2); ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.arc(-size*0.1, -size*0.2, size*0.07, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(size*0.1,  -size*0.2, size*0.07, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-size*0.08, -size*0.22, size*0.025, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(size*0.12,  -size*0.22, size*0.025, 0, Math.PI*2); ctx.fill();
+    // Nose
+    ctx.fillStyle = '#333';
+    ctx.beginPath(); ctx.ellipse(0, -size*0.04, size*0.07, size*0.05, 0, 0, Math.PI*2); ctx.fill();
+    // Tongue
+    if (f % 60 < 40) {
+      ctx.fillStyle = '#ff8888';
+      ctx.beginPath(); ctx.ellipse(0, size*0.1, size*0.08, size*0.1, 0, 0, Math.PI*2); ctx.fill();
+    }
+    // Tail wag
+    ctx.strokeStyle = c; ctx.lineWidth = size * 0.1; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(size * 0.38, size * 0.15);
+    ctx.quadraticCurveTo(size * 0.6, size * 0.0, size * 0.55, -size * 0.08 + Math.sin(f * 0.2) * size * 0.12);
+    ctx.stroke();
     ctx.restore();
   }
 
-  const LX = W / 2, LY = H - 22;
+  const LX = W / 2, LY = H - 18;
+  const ANIMAL_SPEED = 0.55;
+
+  // Animals spawn from edges/top, head toward launcher (matching game logic)
+  const animals = [];
+  let spawnTimer = 0;
+  let projectiles = [];
+  let shootTimer = 0;
   let frame = 0;
+
+  function spawnAnimal() {
+    const side = Math.random();
+    let x, y;
+    if (side < 0.33) { x = -20; y = 20 + Math.random() * (H - 40); }
+    else if (side < 0.66) { x = W + 20; y = 20 + Math.random() * (H - 40); }
+    else { x = 20 + Math.random() * (W - 40); y = -20; }
+    animals.push({
+      x, y,
+      vx: 0, vy: 0,
+      size: 13 + Math.floor(Math.random() * 4),
+      colorIdx: Math.floor(Math.random() * 5),
+      isDog: Math.random() < 0.5,
+      frame: Math.floor(Math.random() * 200),
+    });
+  }
+
+  // Pre-seed a few animals
+  for (let i = 0; i < 4; i++) spawnAnimal();
 
   function tick() {
     frame++;
+
     ctx.fillStyle = '#0a0a1a';
     ctx.fillRect(0, 0, W, H);
 
     for (const s of stars) {
       ctx.fillStyle = s.color;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Update & draw kittens
-    for (const k of kittens) {
-      k.angle += k.speed;
-      k.frame++;
-      const kx = LX + Math.cos(k.angle) * k.radius;
-      const ky = (H / 2 - 10) + Math.sin(k.angle) * k.radius * 0.55;
-      drawMiniKitten(kx, ky, k.size, k.colorIdx, k.frame);
+    // Spawn new animals periodically
+    spawnTimer++;
+    if (spawnTimer > 90 && animals.length < 6) {
+      spawnAnimal();
+      spawnTimer = 0;
     }
 
-    // Shoot a bottle periodically
+    // Update animals — steer toward launcher (same as game)
+    for (const a of animals) {
+      a.frame++;
+      const tdx = LX - a.x, tdy = LY - a.y;
+      const dist = Math.sqrt(tdx*tdx + tdy*tdy);
+      if (dist > 1) {
+        a.vx += (tdx / dist) * ANIMAL_SPEED * 0.04;
+        a.vy += (tdy / dist) * ANIMAL_SPEED * 0.04;
+      }
+      const spd = Math.sqrt(a.vx*a.vx + a.vy*a.vy);
+      if (spd > ANIMAL_SPEED * 1.6) { a.vx = (a.vx/spd)*ANIMAL_SPEED*1.6; a.vy = (a.vy/spd)*ANIMAL_SPEED*1.6; }
+      a.x += a.vx; a.y += a.vy;
+    }
+
+    // Remove animals that reach launcher
+    for (let i = animals.length - 1; i >= 0; i--) {
+      const a = animals[i];
+      const dx = a.x - LX, dy = a.y - LY;
+      if (Math.sqrt(dx*dx + dy*dy) < 22) animals.splice(i, 1);
+    }
+
+    // Draw animals
+    for (const a of animals) {
+      if (a.isDog) drawMiniDog(a.x, a.y, a.size, a.colorIdx, a.frame);
+      else         drawMiniKitten(a.x, a.y, a.size, a.colorIdx, a.frame);
+    }
+
+    // Shoot a biscuit periodically toward a random animal
     shootTimer++;
-    if (shootTimer > 60 && !projectile.active) {
-      const target = kittens[Math.floor(Math.random() * kittens.length)];
-      const tx = LX + Math.cos(target.angle) * target.radius;
-      const ty = (H / 2 - 10) + Math.sin(target.angle) * target.radius * 0.55;
-      const dx = tx - LX, dy = ty - LY;
+    if (shootTimer > 55 && animals.length > 0) {
+      const target = animals[Math.floor(Math.random() * animals.length)];
+      const dx = target.x - LX, dy = target.y - LY;
       const len = Math.sqrt(dx*dx + dy*dy);
-      projectile.active = true;
-      projectile.x = LX; projectile.y = LY;
-      projectile.vx = (dx / len) * 3.5;
-      projectile.vy = (dy / len) * 3.5;
-      projectile.angle = 0;
+      projectiles.push({
+        x: LX, y: LY,
+        vx: (dx / len) * 3.8,
+        vy: (dy / len) * 3.8,
+        angle: 0,
+        spin: (Math.random() - 0.5) * 0.3,
+      });
       shootTimer = 0;
     }
 
-    if (projectile.active) {
-      projectile.x += projectile.vx;
-      projectile.y += projectile.vy;
-      projectile.angle += 0.15;
-      drawMiniBottle(projectile.x, projectile.y, projectile.angle);
-      if (projectile.x < 0 || projectile.x > W || projectile.y < 0 || projectile.y > H) {
-        projectile.active = false;
-      }
+    // Update & draw biscuit projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      const p = projectiles[i];
+      p.x += p.vx; p.y += p.vy;
+      p.vy += 0.1; // slight gravity matching game
+      p.angle += p.spin;
+      drawMiniBiscuit(p.x, p.y, p.angle, false);
+      if (p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 40) projectiles.splice(i, 1);
     }
 
-    // Launcher bottle
-    drawMiniBottle(LX, LY, 0);
+    // Launcher biscuit at bottom
+    drawMiniBiscuit(LX, LY, 0, true);
 
     requestAnimationFrame(tick);
   }
