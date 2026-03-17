@@ -6,8 +6,24 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx    = canvas.getContext('2d');
 
-const GAME_W = 480;
-const GAME_H = 700;
+let GAME_W = 480;
+let GAME_H = 700;
+let SHOOTER_X = GAME_W / 2;
+let SHOOTER_Y = GAME_H - 80;
+let R = 22, COLS = 8, COL_W = R*2;
+let GRID_X = (GAME_W-COLS*COL_W)/2, GRID_TOP = 48;
+let ROW_H = R*1.85, DANGER_Y = GAME_H - 175;
+
+function recalcLayout() {
+  R        = Math.floor(GAME_W / (COLS * 2 + 1));
+  COL_W    = R * 2;
+  GRID_X   = (GAME_W - COLS * COL_W) / 2;
+  GRID_TOP = Math.round(GAME_H * 0.06);
+  ROW_H    = R * 1.85;
+  DANGER_Y = GAME_H - Math.round(GAME_H * 0.22);
+  SHOOTER_X = GAME_W / 2;
+  SHOOTER_Y = GAME_H - Math.round(GAME_H * 0.11);
+}
 
 // ── Canvas sizing (letterbox) ─────────────────────────────
 let canvasRect = null;
@@ -17,28 +33,17 @@ function resizeCanvas() {
   const vv = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
   const vw = Math.floor(vv.width), vh = Math.floor(vv.height);
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const reservedTop   = 40;
-  const reservedBelow = isTouch ? 60 : 36;
-  const availH = vh - reservedTop - reservedBelow;
-
   let w, h, x, y;
   if (isTouch) {
-    // Mobile: fill the full viewport width, scale height proportionally
-    w = vw;
-    h = Math.min(Math.floor(w * GAME_H / GAME_W), availH);
-    w = Math.floor(h * GAME_W / GAME_H); // recalc width in case height was capped
-    x = Math.floor((vw - w) / 2);
-    y = reservedTop + Math.floor((availH - h) / 2);
+    w = vw; h = vh; x = 0; y = 0;
   } else {
-    // Desktop: cap at 420px wide, centred
     const maxW = 420;
-    const scale = Math.min(maxW / GAME_W, availH / GAME_H);
+    const scale = Math.min(maxW / GAME_W, vh / GAME_H);
     w = Math.floor(GAME_W * scale);
     h = Math.floor(GAME_H * scale);
     x = Math.floor((vw - w) / 2);
-    y = reservedTop + Math.floor((availH - h) / 2);
+    y = Math.floor((vh - h) / 2);
   }
-
   canvas.style.width    = w + 'px';
   canvas.style.height   = h + 'px';
   canvas.style.position = 'fixed';
@@ -50,8 +55,10 @@ function resizeCanvas() {
   r.setProperty('--canvas-width',  w + 'px');
   r.setProperty('--canvas-height', h + 'px');
   _rszW = w; _rszH = h; _rszX = x; _rszY = y;
-  if (canvas.width  !== GAME_W) canvas.width  = GAME_W;
-  if (canvas.height !== GAME_H) canvas.height = GAME_H;
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  GAME_W = w; GAME_H = h;
+  recalcLayout();
 }
 
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
@@ -171,15 +178,7 @@ const NUM_COLOURS = COLOURS.length;
 // ─────────────────────────────────────────────────────────
 //  GRID CONSTANTS
 // ─────────────────────────────────────────────────────────
-const R        = 22;          // bubble radius
-const COLS     = 10;
-const COL_W    = R * 2;       // 44px per column
-const GRID_X   = (GAME_W - COLS * COL_W) / 2;  // left edge of grid
-const GRID_TOP = 48;          // y of first row
-const ROW_H    = R * 1.85;    // row height (slight overlap)
-
-// Danger line — if any bubble reaches here Kobie loses a life
-const DANGER_Y = GAME_H - 175;
+// layout vars declared at top of file
 
 // ─────────────────────────────────────────────────────────
 //  DRAW HELPERS
@@ -660,8 +659,7 @@ let wave        = 1;
 let frameCount  = 0;
 
 // Shooter state
-const SHOOTER_X = GAME_W / 2;
-const SHOOTER_Y = GAME_H - 80;
+// SHOOTER_X/Y declared at top of file
 let   aimAngle  = -Math.PI / 2;   // straight up
 let   nextBubbleColour = 0;
 let   currentBubbleColour = 0;
@@ -684,18 +682,7 @@ let floatTexts = [];
 let _hudScore = -1, _hudWave = -1, _hudBest = -1, _hudPending = false;
 
 function scheduleHUD() {
-  if (_hudPending) return;
-  _hudPending = true;
-  requestAnimationFrame(() => {
-    _hudPending = false;
-    const scoreEl = document.getElementById('score');
-    const waveEl  = document.getElementById('wave');
-    const bestEl  = document.getElementById('best');
-    const best    = hsBest('bubble-slumber');
-    if (score !== _hudScore) { scoreEl.textContent = score; _hudScore = score; }
-    if (wave  !== _hudWave)  { waveEl.textContent  = wave;  _hudWave  = wave;  }
-    if (best  !== _hudBest)  { bestEl.textContent  = best;  _hudBest  = best;  }
-  });
+  // HUD is drawn on canvas each frame
 }
 
 function addFloatText(x, y, text, color) {
@@ -1067,13 +1054,32 @@ function draw() {
     ctx.fillText(f.text, f.x, f.y);
     ctx.restore();
   }
+
+  // On-canvas HUD bar at bottom
+  const HUD_H = 36;
+  ctx.fillStyle = 'rgba(8,4,26,0.75)';
+  ctx.fillRect(0, GAME_H - HUD_H, GAME_W, HUD_H);
+  ctx.strokeStyle = '#cc88ff30';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, GAME_H - HUD_H); ctx.lineTo(GAME_W, GAME_H - HUD_H); ctx.stroke();
+  ctx.font = 'bold 13px "Courier New", monospace';
+  ctx.fillStyle = '#cc88ff';
+  ctx.textBaseline = 'middle';
+  const hudY = GAME_H - HUD_H / 2;
+  ctx.textAlign = 'left';  ctx.fillText('SCORE: ' + score, 12, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('WAVE: ' + wave, GAME_W / 2, hudY);
+  ctx.textAlign = 'right'; ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('bubble-slumber') : 0), GAME_W - 12, hudY);
+  ctx.textBaseline = 'alphabetic';
 }
 
 // ─────────────────────────────────────────────────────────
 //  GAME LOOP
 // ─────────────────────────────────────────────────────────
-function loop() {
+let _lastTs = 0;
+function loop(ts = 0) {
   requestAnimationFrame(loop);
+  if (ts - _lastTs < 16.5) return;
+  _lastTs = ts;
   update();
   draw();
 }
