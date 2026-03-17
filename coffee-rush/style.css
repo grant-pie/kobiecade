@@ -99,7 +99,7 @@ canvas {
 }
 
 .overlay-sub {
-  font-size: clamp(10px, 1.8vw, 12px);
+  font-size: clamp(13px, 2.4vw, 16px);
   color: #ff69b499;
   letter-spacing: 2px;
   margin-bottom: 20px;
@@ -114,7 +114,7 @@ canvas {
   text-align: left;
 }
 .how-to p {
-  font-size: clamp(9px, 1.6vw, 12px);
+  font-size: clamp(12px, 2.2vw, 15px);
   color: #ff69b4cc;
   letter-spacing: 1px;
   margin-bottom: 6px;
