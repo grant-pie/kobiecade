@@ -29,6 +29,21 @@ function recalcLayout() {
 let canvasRect = null;
 let _rszW = 0, _rszH = 0, _rszX = 0, _rszY = 0;
 
+// ─────────────────────────────────────────────────────────
+//  STAR FIELD — declared here so generateStars() is available
+//  when resizeCanvas() is first called below.
+// ─────────────────────────────────────────────────────────
+let STARS = [];
+function generateStars() {
+  STARS = Array.from({ length: 60 }, () => {
+    const a = Math.random() * 0.6 + 0.15;
+    const v = Math.round(a * 255).toString(16).padStart(2, '0');
+    const cols = ['#cc88ff', '#8844ff', '#4488ff', '#ffccff', '#ffffff'];
+    const col = cols[Math.floor(Math.random() * cols.length)];
+    return { x: Math.random() * GAME_W, y: Math.random() * GAME_H, r: Math.random() * 1.4 + 0.3, color: col + v };
+  });
+}
+
 function resizeCanvas() {
   const vv = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
   const vw = Math.floor(vv.width), vh = Math.floor(vv.height);
@@ -59,6 +74,7 @@ function resizeCanvas() {
   if (canvas.height !== h) canvas.height = h;
   GAME_W = w; GAME_H = h;
   recalcLayout();
+  generateStars();
 }
 
 window.addEventListener('resize', () => { resizeCanvas(); canvasRect = canvas.getBoundingClientRect(); });
@@ -176,6 +192,20 @@ const COLOURS = [
 const NUM_COLOURS = COLOURS.length;
 
 // ─────────────────────────────────────────────────────────
+//  SPECIAL BUBBLE TYPES
+//  Stored as negative sentinel values so they never clash
+//  with normal colour indices (0-3) or empty (-1).
+// ─────────────────────────────────────────────────────────
+const BUBBLE_WILDCARD = -10;  // matches any colour
+const BUBBLE_BOMB     = -20;  // pops all bubbles within blast radius
+
+// Every WILDCARD_INTERVAL shots the player receives a wildcard.
+// Every BOMB_INTERVAL shots the player receives a bomb.
+// If both would fire on the same shot, bomb takes priority.
+const WILDCARD_INTERVAL = 8;
+const BOMB_INTERVAL     = 15;
+
+// ─────────────────────────────────────────────────────────
 //  GRID CONSTANTS
 // ─────────────────────────────────────────────────────────
 // layout vars declared at top of file
@@ -186,6 +216,17 @@ const NUM_COLOURS = COLOURS.length;
 
 // Draw a dream bubble at cx,cy with radius r
 function drawEmailBubble(cx, cy, r, colIdx) {
+  // ── Special: WILDCARD ─────────────────────────────────
+  if (colIdx === BUBBLE_WILDCARD) {
+    drawWildcardBubble(cx, cy, r);
+    return;
+  }
+  // ── Special: BOMB ─────────────────────────────────────
+  if (colIdx === BUBBLE_BOMB) {
+    drawBombBubble(cx, cy, r);
+    return;
+  }
+
   const c = COLOURS[colIdx];
 
   ctx.save();
@@ -281,6 +322,125 @@ function drawEmailBubble(cx, cy, r, colIdx) {
     ctx.beginPath(); ctx.arc(cx, cy, r*0.1, 0, Math.PI*2);
     ctx.fillStyle = c.fill + 'cc'; ctx.fill();
   }
+
+  ctx.restore();
+}
+
+// ── Wildcard bubble — rainbow spinning ring ────────────────
+function drawWildcardBubble(cx, cy, r) {
+  ctx.save();
+
+  // Animated rainbow glow ring
+  const now = Date.now() / 600;
+  for (let i = 0; i < 6; i++) {
+    const hue = ((i / 6) * 360 + now * 60) % 360;
+    const a = (i / 6) * Math.PI * 2 + now;
+    const px = cx + Math.cos(a) * (r * 0.35);
+    const py = cy + Math.sin(a) * (r * 0.35);
+    ctx.beginPath();
+    ctx.arc(px, py, r * 0.28, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${hue},100%,70%,0.55)`;
+    ctx.fill();
+  }
+
+  // White body
+  const grd = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, r*0.05, cx, cy, r);
+  grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grd.addColorStop(1, 'rgba(200,180,255,0.75)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Shine
+  ctx.beginPath();
+  ctx.arc(cx - r*0.28, cy - r*0.28, r*0.22, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fill();
+
+  // Star icon
+  ctx.fillStyle = 'rgba(180,100,255,0.95)';
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const outer = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    const inner = outer + Math.PI / 5;
+    const ox = cx + Math.cos(outer) * r * 0.45;
+    const oy = cy + Math.sin(outer) * r * 0.45;
+    const ix = cx + Math.cos(inner) * r * 0.2;
+    const iy = cy + Math.sin(inner) * r * 0.2;
+    i === 0 ? ctx.moveTo(ox, oy) : ctx.lineTo(ox, oy);
+    ctx.lineTo(ix, iy);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ── Bomb bubble — dark with fuse spark ────────────────────
+function drawBombBubble(cx, cy, r) {
+  ctx.save();
+
+  // Outer red glow
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,60,0,0.18)';
+  ctx.fill();
+
+  // Dark body
+  const grd = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, r*0.1, cx, cy, r);
+  grd.addColorStop(0, '#555566');
+  grd.addColorStop(1, '#1a1a2a');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.strokeStyle = '#ff4422';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Shine
+  ctx.beginPath();
+  ctx.arc(cx - r*0.28, cy - r*0.28, r*0.22, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fill();
+
+  // Fuse
+  ctx.strokeStyle = '#aa8855';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx + r*0.1, cy - r*0.7);
+  ctx.quadraticCurveTo(cx + r*0.55, cy - r*1.0, cx + r*0.4, cy - r*1.35);
+  ctx.stroke();
+
+  // Fuse spark (animated)
+  const spark = (Date.now() / 150) % 1;
+  const sparkAlpha = 0.6 + Math.sin(Date.now() / 80) * 0.4;
+  ctx.beginPath();
+  ctx.arc(cx + r*0.4, cy - r*1.35, r*0.18, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255,200,50,${sparkAlpha})`;
+  ctx.shadowColor = '#ffaa00';
+  ctx.shadowBlur = 8;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Skull icon
+  ctx.fillStyle = 'rgba(255,80,40,0.90)';
+  // Skull dome
+  ctx.beginPath();
+  ctx.arc(cx, cy + r*0.05, r*0.32, Math.PI, 0);
+  ctx.lineTo(cx + r*0.32, cy + r*0.32);
+  ctx.lineTo(cx - r*0.32, cy + r*0.32);
+  ctx.closePath();
+  ctx.fill();
+  // Eye sockets
+  ctx.fillStyle = '#1a1a2a';
+  ctx.beginPath(); ctx.arc(cx - r*0.13, cy + r*0.04, r*0.1, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r*0.13, cy + r*0.04, r*0.1, 0, Math.PI*2); ctx.fill();
 
   ctx.restore();
 }
@@ -447,7 +607,10 @@ function drawKobie(cx, cy, aimAngle) {
 
 // Pop burst particles
 function drawBurst(cx, cy, colIdx, progress) {
-  const c = COLOURS[colIdx];
+  // Special bubbles use a white/gold burst
+  const c = (colIdx >= 0) ? COLOURS[colIdx]
+          : colIdx === BUBBLE_WILDCARD ? { fill: '#ffffff' }
+          : { fill: '#ff6622' }; // bomb
   const count = 8;
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2;
@@ -465,15 +628,17 @@ function drawBurst(cx, cy, colIdx, progress) {
 }
 
 // ─────────────────────────────────────────────────────────
+//  HIGHSCORE SAFE WRAPPERS
+//  hsBest / hsSave / hsRenderBest are defined in an external script.
+//  These fallbacks prevent crashes if that script hasn't loaded yet.
+// ─────────────────────────────────────────────────────────
+if (typeof hsBest       !== 'function') window.hsBest       = () => 0;
+if (typeof hsSave       !== 'function') window.hsSave       = () => {};
+if (typeof hsRenderBest !== 'function') window.hsRenderBest = () => {};
+
+// ─────────────────────────────────────────────────────────
 //  STAR FIELD
 // ─────────────────────────────────────────────────────────
-const STARS = Array.from({ length: 60 }, () => {
-  const a = Math.random() * 0.6 + 0.15;
-  const v = Math.round(a * 255).toString(16).padStart(2, '0');
-  const cols = ['#cc88ff', '#8844ff', '#4488ff', '#ffccff', '#ffffff'];
-  const col = cols[Math.floor(Math.random() * cols.length)];
-  return { x: Math.random() * GAME_W, y: Math.random() * GAME_H, r: Math.random() * 1.4 + 0.3, color: col + v };
-});
 
 function drawBackground() {
   // Deep dream sky gradient
@@ -507,15 +672,19 @@ function drawBackground() {
 // grid[row][col] = colIdx (0-3) or -1 (empty)
 let grid = [];
 
-// gridParityOffset compensates for parity when rows are prepended via unshift.
-// Decrements on each push so existing rows keep their visual x-position.
-// y-position uses the raw row index — after unshift the new row is always at
-// index 0 (top) and existing rows naturally move down one index each push.
-let gridParityOffset = 0;
+// gridRowParity[row] stores the visual parity (0 or 1) for each row.
+// Set at row creation time and never changes — immune to index drift.
+// parity 0 = even (full COLS wide, no x offset)
+// parity 1 = odd  (COLS-1 wide, shifted right by R)
+let gridRowParity = [];
+
+// Track the parity of the next row to be added at the top.
+// Starts at 0, flips each time a row is prepended via pushGridDown.
+let nextTopParity = 0;
 
 // Convert grid row/col to pixel centre
 function bubblePos(row, col) {
-  const parity = (((row + gridParityOffset) % 2) + 2) % 2; // always 0 or 1
+  const parity = gridRowParity[row] ?? 0;
   const offset = parity === 1 ? R : 0;
   return {
     x: GRID_X + offset + col * COL_W + R,
@@ -523,37 +692,59 @@ function bubblePos(row, col) {
   };
 }
 
-// How many cols in a given row — based on visual parity
+// How many cols in a given row.
+// Uses actual array length when available — ground truth, immune to parity drift.
+// Falls back to parity calculation only for rows not yet created.
 function colsInRow(row) {
-  const parity = (((row + gridParityOffset) % 2) + 2) % 2;
+  if (grid[row] && grid[row].length > 0) return grid[row].length;
+  // For a not-yet-created row, derive from the parity we'd assign it
+  const parity = gridRowParity[row] ?? nextTopParity;
   return parity === 0 ? COLS : COLS - 1;
 }
 
 function createGrid(wave) {
   grid = [];
-  const rows = Math.min(4 + wave, 10);
+  gridRowParity = [];
+  nextTopParity = 1; // row 0 is even (parity 0), so next prepended row is odd (parity 1)
+
+  // Calculate how many rows can physically fit between GRID_TOP and DANGER_Y,
+  // leaving at least 2 rows of breathing room so the bottom row doesn't
+  // immediately trigger a loss on wave start.
+  const maxSafeRows = Math.max(1, Math.floor((DANGER_Y - GRID_TOP - R * 2) / ROW_H) - 2);
+  const rows = Math.min(4 + wave, 9, maxSafeRows);
   for (let r = 0; r < rows; r++) {
+    const parity = r % 2; // row 0 = even, row 1 = odd, etc.
+    gridRowParity[r] = parity;
+    const cols = parity === 0 ? COLS : COLS - 1;
     grid[r] = [];
-    const cols = colsInRow(r);
     for (let c = 0; c < cols; c++) {
-      // Higher waves introduce more colour variety
       const maxCol = Math.min(1 + wave, NUM_COLOURS);
       grid[r][c] = Math.floor(Math.random() * maxCol);
     }
   }
 }
 
-// Find all bubbles reachable from the top row (to detect floating ones)
+// Find all bubbles reachable from the ceiling (to detect floating ones).
+// Seeds from the first row that actually contains a bubble, not just row 0,
+// so a cleared top row doesn't cause all remaining bubbles to appear disconnected.
 function findConnected() {
   const visited = new Set();
   const queue   = [];
-  // Seed from row 0
-  for (let c = 0; c < colsInRow(0); c++) {
-    if (grid[0] && grid[0][c] >= 0) {
-      const key = '0,' + c;
-      if (!visited.has(key)) { visited.add(key); queue.push([0, c]); }
+
+  // Find the topmost row that has at least one bubble and seed from there.
+  for (let r = 0; r < grid.length; r++) {
+    const hasBubble = grid[r] && grid[r].some(c => c >= 0);
+    if (hasBubble) {
+      for (let c = 0; c < colsInRow(r); c++) {
+        if (grid[r][c] >= 0) {
+          const key = r + ',' + c;
+          if (!visited.has(key)) { visited.add(key); queue.push([r, c]); }
+        }
+      }
+      break; // Only seed the first occupied row
     }
   }
+
   while (queue.length) {
     const [r, c] = queue.pop();
     for (const [nr, nc] of neighbours(r, c)) {
@@ -576,7 +767,7 @@ function findConnected() {
 // From an odd-row cell (r,c), the two neighbours in the even row above/below
 // are (r±1, c) and (r±1, c+1)
 function neighbours(row, col) {
-  const visualParity = (((row + gridParityOffset) % 2) + 2) % 2;
+  const visualParity = gridRowParity[row] ?? 0;
   const odd = visualParity === 1;
   const candidates = odd ? [
     [row - 1, col],     [row - 1, col + 1],
@@ -602,21 +793,48 @@ function snapToGrid(px, py) {
     if (!grid[0] || grid[0][c] < 0) candidates.add('0,' + c);
   }
 
-  // Add empty neighbours of every filled cell
+  // Only allow extending the grid below bubbles that are ceiling-connected.
+  // Floating bubbles should not act as anchors for new placements.
+  const connected = findConnected();
+
+  // Add empty neighbours of every filled, ceiling-connected cell
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < colsInRow(r); c++) {
       if (grid[r][c] < 0) continue;
+      if (!connected.has(r + ',' + c)) continue; // skip floating bubbles
       for (const [nr, nc] of neighbours(r, c)) {
         if (grid[nr] && grid[nr][nc] < 0) candidates.add(nr + ',' + nc);
-        // Also allow one row beyond the current grid bottom
       }
     }
   }
 
-  // Also allow the row just below the grid
-  const nextRow = grid.length;
-  for (let c = 0; c < colsInRow(nextRow); c++) {
-    candidates.add(nextRow + ',' + c);
+  // Allow the row just below the last ceiling-connected bubble's row
+  let maxConnectedRow = -1;
+  for (const key of connected) {
+    const r = parseInt(key.split(',')[0]);
+    if (r > maxConnectedRow) maxConnectedRow = r;
+  }
+  if (maxConnectedRow >= 0) {
+    const nextRow = maxConnectedRow + 1;
+    // Derive the parity for this new bottom row from the row above it,
+    // not from nextTopParity (which tracks the top, not the bottom).
+    if (!gridRowParity[nextRow]) {
+      const aboveParity = gridRowParity[nextRow - 1] ?? 0;
+      gridRowParity[nextRow] = aboveParity === 0 ? 1 : 0;
+    }
+    for (let c = 0; c < colsInRow(nextRow); c++) {
+      candidates.add(nextRow + ',' + c);
+    }
+  } else {
+    // No connected bubbles at all — allow full bottom row as fallback
+    const nextRow = grid.length;
+    if (!gridRowParity[nextRow]) {
+      const aboveParity = gridRowParity[nextRow - 1] ?? 0;
+      gridRowParity[nextRow] = aboveParity === 0 ? 1 : 0;
+    }
+    for (let c = 0; c < colsInRow(nextRow); c++) {
+      candidates.add(nextRow + ',' + c);
+    }
   }
 
   let bestDist = Infinity, bestR = 0, bestC = 0;
@@ -714,25 +932,50 @@ function hideAllOverlays() {
 // ─────────────────────────────────────────────────────────
 //  GAME INIT
 // ─────────────────────────────────────────────────────────
-function pickRandomColour() {
-  // Only pick colours that exist in the current grid
-  const present = new Set();
-  for (const row of grid) for (const c of row) if (c >= 0) present.add(c);
-  const options = present.size > 0 ? [...present] : [0,1,2,3];
-  return options[Math.floor(Math.random() * options.length)];
+//  COLOUR PICKER — weighted toward colours with more grid presence
+// ─────────────────────────────────────────────────────────
+function pickUsefulColour() {
+  // Count how many of each colour exist in the grid
+  const counts = {};
+  for (const row of grid) {
+    for (const c of row) {
+      if (c >= 0) counts[c] = (counts[c] || 0) + 1;
+    }
+  }
+
+  const colours = Object.keys(counts).map(Number);
+  if (colours.length === 0) return Math.floor(Math.random() * NUM_COLOURS);
+
+  // Build a weighted pool — each colour appears proportional to its count.
+  // This means colours with more bubbles are more likely to be picked,
+  // making it easier to find matches in later waves.
+  const pool = [];
+  for (const col of colours) {
+    const weight = counts[col];
+    for (let i = 0; i < weight; i++) pool.push(col);
+  }
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function pickNextBubble() {
+  // shotCount reflects shots already fired; the next shot will be shotCount+1.
+  const next = shotCount + 1;
+  if (next % BOMB_INTERVAL === 0)     return BUBBLE_BOMB;
+  if (next % WILDCARD_INTERVAL === 0) return BUBBLE_WILDCARD;
+  return pickUsefulColour();
 }
 
 function startGame(keepWave = false) {
   if (!keepWave) { wave = 1; score = 0; }
   _hudScore = _hudWave = _hudBest = -1;
   createGrid(wave);
-  gridParityOffset = 0;
   projectile  = null;
   mousePos    = null;
   popAnims    = [];
   floatTexts  = [];
-  currentBubbleColour = pickRandomColour();
-  nextBubbleColour    = pickRandomColour();
+  currentBubbleColour = pickUsefulColour();
+  nextBubbleColour    = pickNextBubble();
   frameCount = 0;
   shotCount  = 0;
   scheduleHUD();
@@ -764,6 +1007,22 @@ const BUBBLE_SPEED = 10;
 
 function fireProjectile() {
   if (projectile) return;
+
+  // Sweep any pre-existing disconnected bubbles before firing so the player
+  // sees them pop as an immediate consequence rather than on the next shot.
+  const connectedPre = findConnected();
+  for (let gr = 0; gr < grid.length; gr++) {
+    for (let gc = 0; gc < colsInRow(gr); gc++) {
+      if (grid[gr][gc] >= 0 && !connectedPre.has(gr + ',' + gc)) {
+        const pos = bubblePos(gr, gc);
+        popAnims.push({ x: pos.x, y: pos.y, colIdx: grid[gr][gc], progress: 0 });
+        grid[gr][gc] = -1;
+      }
+    }
+  }
+  while (grid.length && grid[grid.length - 1].every(c => c < 0)) { grid.pop(); gridRowParity.pop(); }
+  if (isGridEmpty()) { winWave(); return; }
+
   const dx = Math.cos(aimAngle);
   const dy = Math.sin(aimAngle);
   projectile = {
@@ -774,11 +1033,10 @@ function fireProjectile() {
     colour: currentBubbleColour,
   };
   sfxShoot();
-  // Advance the queue — nextBubbleColour becomes current,
-  // new next is picked AFTER landing (in landProjectile) so it
-  // reflects the post-pop grid state. For now set a placeholder.
+  // Advance the queue — nextBubbleColour becomes current.
+  // nextBubbleColour is refreshed authoritatively in landProjectile after the
+  // pop, so we don't set a preliminary value here (it would cause a visual flicker).
   currentBubbleColour = nextBubbleColour;
-  nextBubbleColour    = pickRandomColour(); // preliminary; refreshed after land
 }
 
 function isGridEmpty() {
@@ -801,8 +1059,12 @@ function updateProjectile() {
   // Bounce off left/right walls
   const leftWall  = GRID_X;
   const rightWall = GRID_X + COLS * COL_W;
-  if (projectile.x - R < leftWall)  { projectile.x = leftWall + R;  projectile.vx *= -1; }
-  if (projectile.x + R > rightWall) { projectile.x = rightWall - R; projectile.vx *= -1; }
+  let bounced = false;
+  if (projectile.x - R < leftWall)  { projectile.x = leftWall + R;  projectile.vx *= -1; bounced = true; }
+  if (projectile.x + R > rightWall) { projectile.x = rightWall - R; projectile.vx *= -1; bounced = true; }
+
+  // Skip collision detection on the frame of a bounce to prevent phantom landings
+  if (bounced) return;
 
   // Off the top — snap to top row
   if (projectile.y - R < GRID_TOP) {
@@ -810,9 +1072,11 @@ function updateProjectile() {
     return;
   }
 
-  // Off the bottom — discard silently
+  // Off the bottom — discard; do NOT count as a shot toward grid push
   if (projectile.y > GAME_H + 20) {
     projectile = null;
+    nextBubbleColour = pickNextBubble();
+    addFloatText(SHOOTER_X, SHOOTER_Y - 60, 'MISS!', '#ff4444');
     return;
   }
 
@@ -821,7 +1085,7 @@ function updateProjectile() {
     for (let c = 0; c < colsInRow(r); c++) {
       if (grid[r][c] < 0) continue;
       const pos = bubblePos(r, c);
-      if (Math.hypot(projectile.x - pos.x, projectile.y - pos.y) < R * 1.9) {
+      if (Math.hypot(projectile.x - pos.x, projectile.y - pos.y) < R * 1.75) {
         landProjectile();
         return;
       }
@@ -831,19 +1095,98 @@ function updateProjectile() {
 
 function landProjectile() {
   if (!projectile) return;
+
+  const colour = projectile.colour;
+
+  // ── BOMB: detonate on impact, never placed in grid ────────
+  if (colour === BUBBLE_BOMB) {
+    const bx = projectile.x, by = projectile.y;
+    projectile = null;
+    shotCount++;
+    const blastRadius = R * 3.2;
+    let blasted = 0;
+    for (let gr = 0; gr < grid.length; gr++) {
+      for (let gc = 0; gc < colsInRow(gr); gc++) {
+        if (grid[gr][gc] < 0) continue;
+        const pos = bubblePos(gr, gc);
+        if (Math.hypot(bx - pos.x, by - pos.y) <= blastRadius) {
+          popAnims.push({ x: pos.x, y: pos.y, colIdx: grid[gr][gc], progress: 0 });
+          grid[gr][gc] = -1;
+          blasted++;
+        }
+      }
+    }
+    // Also drop anything now floating
+    const connectedAfterBlast = findConnected();
+    let dropped = 0;
+    for (let gr = 0; gr < grid.length; gr++) {
+      for (let gc = 0; gc < colsInRow(gr); gc++) {
+        if (grid[gr][gc] >= 0 && !connectedAfterBlast.has(gr + ',' + gc)) {
+          const pos = bubblePos(gr, gc);
+          popAnims.push({ x: pos.x, y: pos.y, colIdx: grid[gr][gc], progress: 0 });
+          grid[gr][gc] = -1;
+          dropped++;
+        }
+      }
+    }
+    const totalCleared = blasted + dropped;
+    const pts = totalCleared * 10 * wave;
+    score += pts;
+    sfxCombo();
+    addFloatText(SHOOTER_X, SHOOTER_Y - 90, `BOOM! +${pts}`, '#ff6622');
+    scheduleHUD();
+    while (grid.length && grid[grid.length - 1].every(c => c < 0)) { grid.pop(); gridRowParity.pop(); }
+    if (isGridEmpty()) { winWave(); return; }
+    nextBubbleColour = pickNextBubble();
+    // Danger check
+    for (let gr = 0; gr < grid.length; gr++) {
+      for (let gc = 0; gc < colsInRow(gr); gc++) {
+        if (grid[gr][gc] >= 0 && bubblePos(gr, gc).y + R >= DANGER_Y) { endGame(); return; }
+      }
+    }
+    if (shotCount % 10 === 0) pushGridDown();
+    return;
+  }
+
   const [r, c] = snapToGrid(projectile.x, projectile.y);
 
-  // Ensure grid has enough rows
+  // Ensure grid has enough rows, assigning parity for each new row
   while (grid.length <= r) {
-    const newRow = grid.length;
-    grid.push(Array(colsInRow(newRow)).fill(-1));
+    const lastParity = gridRowParity.length > 0 ? gridRowParity[gridRowParity.length - 1] : 0;
+    const newParity = lastParity === 0 ? 1 : 0;
+    gridRowParity.push(newParity);
+    const cols = newParity === 0 ? COLS : COLS - 1;
+    grid.push(Array(cols).fill(-1));
   }
 
   // Place bubble — guard against out-of-bounds column
   const placed = c < colsInRow(r);
-  if (placed) { grid[r][c] = projectile.colour; shotCount++; }
+  if (placed) { grid[r][c] = colour; shotCount++; }
 
   projectile = null;
+
+  // ── WILDCARD: treat as the most common colour at landing site ──
+  let effectiveColour = colour;
+  if (colour === BUBBLE_WILDCARD && placed) {
+    // Find which colour among the neighbours has the most presence in the grid,
+    // and adopt it — maximising the chance of a 3-match.
+    const nbrColours = {};
+    for (const [nr, nc] of neighbours(r, c)) {
+      const nc2 = grid[nr]?.[nc];
+      if (nc2 >= 0) nbrColours[nc2] = (nbrColours[nc2] || 0) + 1;
+    }
+    if (Object.keys(nbrColours).length > 0) {
+      effectiveColour = Number(Object.entries(nbrColours).sort((a, b) => b[1] - a[1])[0][0]);
+    } else {
+      // No neighbours — fall back to most common colour in grid
+      const counts = {};
+      for (const row of grid) for (const v of row) if (v >= 0) counts[v] = (counts[v] || 0) + 1;
+      if (Object.keys(counts).length > 0)
+        effectiveColour = Number(Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]);
+      else effectiveColour = 0;
+    }
+    grid[r][c] = effectiveColour;
+  }
 
   // Check for match — only if bubble was actually placed
   const group = placed ? findGroup(r, c) : [];
@@ -857,12 +1200,12 @@ function landProjectile() {
     const pts = group.length * 10 * wave;
     score += pts;
 
-    // Drop any bubbles now disconnected from the ceiling
-    const connected = findConnected();
+    // Drop any bubbles now disconnected from the ceiling after the pop
+    const connectedAfterPop = findConnected();
     let dropped = 0;
     for (let gr = 0; gr < grid.length; gr++) {
       for (let gc = 0; gc < colsInRow(gr); gc++) {
-        if (grid[gr][gc] >= 0 && !connected.has(gr + ',' + gc)) {
+        if (grid[gr][gc] >= 0 && !connectedAfterPop.has(gr + ',' + gc)) {
           const pos = bubblePos(gr, gc);
           popAnims.push({ x: pos.x, y: pos.y, colIdx: grid[gr][gc], progress: 0 });
           grid[gr][gc] = -1;
@@ -876,7 +1219,10 @@ function landProjectile() {
     const dropPts = dropped * 5 * wave;
     score += dropPts;
 
-    if (totalCleared >= 8) {
+    if (colour === BUBBLE_WILDCARD) {
+      sfxCombo();
+      addFloatText(SHOOTER_X, SHOOTER_Y - 90, `DREAM MATCH! +${pts + dropPts}`, '#ffffff');
+    } else if (totalCleared >= 8) {
       sfxCombo();
       addFloatText(SHOOTER_X, SHOOTER_Y - 90, `LUCID! +${pts + dropPts}`, '#ffcc44');
     } else if (dropped > 0) {
@@ -890,18 +1236,20 @@ function landProjectile() {
 
     scheduleHUD();
 
-    // Refresh next bubble to only show colours still in the grid
-    nextBubbleColour = pickRandomColour();
-
     // Remove empty trailing rows
-    while (grid.length && grid[grid.length - 1].every(c => c < 0)) grid.pop();
+    while (grid.length && grid[grid.length - 1].every(c => c < 0)) { grid.pop(); gridRowParity.pop(); }
 
     if (isGridEmpty()) { winWave(); return; }
-
-  } else {
-    while (grid.length && grid[grid.length - 1].every(c => c < 0)) grid.pop();
-    if (isGridEmpty()) { winWave(); return; }
+  } else if (colour === BUBBLE_WILDCARD && placed) {
+    // Wildcard landed but didn't form a group — still give feedback
+    sfxPop();
+    addFloatText(SHOOTER_X, SHOOTER_Y - 60, 'WILD!', '#ffffff');
   }
+
+  // Refresh next bubble to reflect colours still in the grid.
+  // Must run unconditionally (not just on a pop) so non-matching shots
+  // still produce a useful next bubble.
+  nextBubbleColour = pickNextBubble();
 
   // Danger check
   for (let gr = 0; gr < grid.length; gr++) {
@@ -917,18 +1265,38 @@ function landProjectile() {
 }
 
 function pushGridDown() {
-  // Decrement parity offset so existing rows keep their visual x-position.
-  // y-position is handled naturally by row index — unshift moves all existing
-  // rows from index n to n+1, which shifts them down by exactly one ROW_H.
-  gridParityOffset--;
+  // Don't push if the current bottom row is already dangerously close —
+  // adding another row on top would shift everything down and instant-kill.
+  // Instead, check what the lowest occupied row's Y would be after a push
+  // by simulating one extra row's worth of ROW_H shift.
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < colsInRow(r); c++) {
+      if (grid[r][c] >= 0) {
+        // bubblePos gives the Y for row r; after prepending a row every
+        // existing row index increases by 1, shifting its Y down by ROW_H.
+        if (bubblePos(r, c).y + ROW_H + R >= DANGER_Y) {
+          endGame();
+          return;
+        }
+      }
+    }
+  }
 
-  const newRow = Array(colsInRow(0)).fill(0).map(() => {
+  // The new top row alternates parity with whatever row 0 currently is.
+  // Prepend parity for the new row, shifting all existing parities down by 1.
+  const newParity = nextTopParity;
+  gridRowParity.unshift(newParity);
+  // Next time we prepend, flip parity
+  nextTopParity = newParity === 0 ? 1 : 0;
+
+  const cols = newParity === 0 ? COLS : COLS - 1;
+  const newRow = Array(cols).fill(0).map(() => {
     const maxCol = Math.min(1 + wave, NUM_COLOURS);
     return Math.floor(Math.random() * maxCol);
   });
   grid.unshift(newRow);
 
-  // Danger check
+  // Danger check after the push
   let dangerTriggered = false;
   outer: for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < colsInRow(r); c++) {
@@ -1026,7 +1394,10 @@ function draw() {
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = '#cc88ffaa';
   ctx.textAlign = 'left';
-  ctx.fillText('DREAM', 12, SHOOTER_Y - 28);
+  const nextLabel = nextBubbleColour === BUBBLE_WILDCARD ? 'WILD'
+                  : nextBubbleColour === BUBBLE_BOMB     ? 'BOMB'
+                  : 'DREAM';
+  ctx.fillText(nextLabel, 12, SHOOTER_Y - 28);
   drawEmailBubble(28, SHOOTER_Y - 8, R * 0.65, nextBubbleColour);
   ctx.restore();
 
@@ -1068,8 +1439,58 @@ function draw() {
   const hudY = GAME_H - HUD_H / 2;
   ctx.textAlign = 'left';  ctx.fillText('SCORE: ' + score, 12, hudY);
   ctx.textAlign = 'center'; ctx.fillText('WAVE: ' + wave, GAME_W / 2, hudY);
-  ctx.textAlign = 'right'; ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('bubble-slumber') : 0), GAME_W - 12, hudY);
+  ctx.textAlign = 'right'; ctx.fillText('BEST: ' + hsBest('bubble-slumber'), GAME_W - 12, hudY);
   ctx.textBaseline = 'alphabetic';
+}
+
+// ─────────────────────────────────────────────────────────
+//  DEV HELPERS  (callable from browser console)
+// ─────────────────────────────────────────────────────────
+
+// testStuck() — simulates the floating-straggler stuck state and verifies
+// the cleanup logic clears them and triggers winWave().
+// Usage: open DevTools console and call testStuck()
+function testStuck() {
+  state = 'playing';
+  projectile = null;
+  popAnims = [];
+  floatTexts = [];
+
+  // Build a 15-row all-empty grid with 3 floating stragglers in the last column
+  grid = [];
+  for (let i = 0; i < 15; i++) grid.push(new Array(colsInRow(i)).fill(-1));
+  grid[10][colsInRow(10) - 1] = 2;
+  grid[12][colsInRow(12) - 1] = 3;
+  grid[14][colsInRow(14) - 1] = 1;
+
+  console.log('--- testStuck() ---');
+  console.log('Before cleanup:');
+  console.log('  state:', state);
+  console.log('  isGridEmpty():', isGridEmpty());
+  console.log('  stragglers at [10], [12], [14] last col:', grid[10][colsInRow(10)-1], grid[12][colsInRow(12)-1], grid[14][colsInRow(14)-1]);
+
+  // Run the cleanup logic directly (mirrors what landProjectile now does)
+  const connected = findConnected();
+  for (let gr = 0; gr < grid.length; gr++) {
+    for (let gc = 0; gc < colsInRow(gr); gc++) {
+      if (grid[gr][gc] >= 0 && !connected.has(gr + ',' + gc)) {
+        grid[gr][gc] = -1;
+      }
+    }
+  }
+  while (grid.length && grid[grid.length - 1].every(c => c < 0)) { grid.pop(); gridRowParity.pop(); }
+
+  console.log('After cleanup:');
+  console.log('  isGridEmpty():', isGridEmpty(), '(expect: true)');
+  console.log('  grid.length:', grid.length,     '(expect: 0)');
+
+  if (isGridEmpty()) {
+    winWave();
+    console.log('  state:', state, '(expect: win) ✓ PASS');
+  } else {
+    console.error('  FAIL — grid not empty, stragglers remain');
+    grid.forEach((row, i) => { if (row.some(c => c >= 0)) console.log('  row', i, row); });
+  }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1083,7 +1504,8 @@ function loop(ts = 0) {
   update();
   draw();
 }
-requestAnimationFrame(loop);
+// Single game loop start — do NOT add a second requestAnimationFrame(loop) call here
+loop();
 
 // ─────────────────────────────────────────────────────────
 //  INPUT — click/tap to fire toward that point
@@ -1104,6 +1526,8 @@ function onFire(clientX, clientY) {
   const dx = mousePos.x - SHOOTER_X;
   const dy = mousePos.y - SHOOTER_Y;
   let angle = Math.atan2(dy, dx);
+  // Reject clicks that are at or below the shooter (angle >= 0 means downward/horizontal)
+  if (angle >= 0 || angle <= -Math.PI) return;
   if (angle > -0.15)          angle = -0.15;
   if (angle < -Math.PI + 0.15) angle = -Math.PI + 0.15;
   aimAngle = angle;
