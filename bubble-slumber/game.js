@@ -787,16 +787,12 @@ function neighbours(row, col) {
     [row,     col - 1], [row,     col + 1],
     [row + 1, col - 1], [row + 1, col],
   ];
-  return candidates.filter(([r, c]) => r >= 0 && c >= 0 && c < colsInRow(r));
+  return candidates.filter(([r, c]) => r >= 0 && c >= 0 && grid[r] && c < colsInRow(r));
 }
 
 // Snap a pixel position to the nearest *empty* grid cell adjacent to an
 // existing bubble (or the top row if the grid is empty).
-// vx/vy are the projectile velocity at impact — used to bias snapping toward
-// the side the projectile was approaching from.
-function snapToGrid(px, py, vx = 0, vy = 0) {
-  // Collect candidate cells: empty cells that are adjacent to a filled cell,
-  // plus all cells in row 0 (the ceiling).
+function snapToGrid(px, py) {
   const candidates = new Set();
 
   // Always include top-row empty cells as valid landing spots
@@ -812,14 +808,16 @@ function snapToGrid(px, py, vx = 0, vy = 0) {
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < colsInRow(r); c++) {
       if (grid[r][c] < 0) continue;
-      if (!connected.has(r + ',' + c)) continue; // skip floating bubbles
+      if (!connected.has(r + ',' + c)) continue;
       for (const [nr, nc] of neighbours(r, c)) {
         if (grid[nr] && grid[nr][nc] < 0) candidates.add(nr + ',' + nc);
       }
     }
   }
 
-  // Allow the row just below the last ceiling-connected bubble's row
+  // Allow the row just below the last ceiling-connected bubble's row.
+  // neighbours() filters out non-existent rows so we compute next-row
+  // candidates manually here.
   let maxConnectedRow = -1;
   for (const key of connected) {
     const r = parseInt(key.split(',')[0]);
@@ -827,23 +825,30 @@ function snapToGrid(px, py, vx = 0, vy = 0) {
   }
   if (maxConnectedRow >= 0) {
     const nextRow = maxConnectedRow + 1;
-    // Derive the parity for this new bottom row from the row above it,
-    // not from nextTopParity (which tracks the top, not the bottom).
-    // Use === undefined rather than !gridRowParity so that parity 0 (even rows)
-    // is not incorrectly treated as unset.
     if (gridRowParity[nextRow] === undefined) {
       const aboveParity = gridRowParity[nextRow - 1] ?? 0;
       gridRowParity[nextRow] = aboveParity === 0 ? 1 : 0;
     }
-    // Only add cells in the new row that are actually adjacent to a filled
-    // connected cell — not the entire row blindly, which can produce
-    // out-of-bounds column indices when the row doesn't exist yet.
+    // Compute which columns in nextRow are adjacent to filled connected cells
+    // by applying the hex neighbour offsets directly, without requiring the
+    // row to exist in the grid array yet.
     for (let r = 0; r < grid.length; r++) {
       for (let c = 0; c < colsInRow(r); c++) {
         if (grid[r][c] < 0) continue;
         if (!connected.has(r + ',' + c)) continue;
-        for (const [nr, nc] of neighbours(r, c)) {
-          if (nr === nextRow) candidates.add(nr + ',' + nc);
+        // Only care about downward neighbours into nextRow
+        if (r !== maxConnectedRow) continue;
+        const parity = gridRowParity[r] ?? 0;
+        const odd = parity === 1;
+        // Downward neighbours: odd row -> [r+1,c] and [r+1,c+1]
+        //                      even row -> [r+1,c-1] and [r+1,c]
+        const downNeighbours = odd
+          ? [[r + 1, c], [r + 1, c + 1]]
+          : [[r + 1, c - 1], [r + 1, c]];
+        for (const [nr, nc] of downNeighbours) {
+          if (nr === nextRow && nc >= 0 && nc < colsInRow(nextRow)) {
+            candidates.add(nr + ',' + nc);
+          }
         }
       }
     }
@@ -863,17 +868,7 @@ function snapToGrid(px, py, vx = 0, vy = 0) {
   for (const key of candidates) {
     const [r, c] = key.split(',').map(Number);
     const pos = bubblePos(r, c);
-    let d = Math.hypot(px - pos.x, py - pos.y);
-    // Bias: penalise candidates that are behind the projectile's travel
-    // direction. This ensures a rightward-moving bubble snaps to a cell
-    // on the right side of the cluster rather than the left, and vice versa.
-    if (vx !== 0 || vy !== 0) {
-      const speed = Math.hypot(vx, vy);
-      const nx = vx / speed, ny = vy / speed;  // unit direction vector
-      const dx = pos.x - px,  dy = pos.y - py; // vector to candidate
-      const dot = dx * nx + dy * ny;            // positive = ahead, negative = behind
-      if (dot < 0) d += R * 3;                 // penalise behind-direction candidates
-    }
+    const d = Math.hypot(px - pos.x, py - pos.y);
     if (d < bestDist) { bestDist = d; bestR = r; bestC = c; }
   }
 
@@ -1178,11 +1173,11 @@ function landProjectile() {
     return;
   }
 
-  const [r, c] = snapToGrid(projectile.x, projectile.y, projectile.vx, projectile.vy);
+  const [r, c] = snapToGrid(projectile.x, projectile.y);
 
   // Ensure grid has enough rows, assigning parity for each new row.
-  // Use any parity already written by snapToGrid — only derive from the
-  // previous row if the slot is still undefined.
+  // Respect any parity already written by snapToGrid — only derive from
+  // the row above if the slot is still undefined.
   while (grid.length <= r) {
     const newRow = grid.length;
     if (gridRowParity[newRow] === undefined) {
