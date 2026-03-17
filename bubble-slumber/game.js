@@ -215,7 +215,7 @@ const BOMB_INTERVAL     = 15;
 // ─────────────────────────────────────────────────────────
 
 // Draw a dream bubble at cx,cy with radius r
-function drawEmailBubble(cx, cy, r, colIdx) {
+function drawDreamBubble(cx, cy, r, colIdx) {
   // ── Special: WILDCARD ─────────────────────────────────
   if (colIdx === BUBBLE_WILDCARD) {
     drawWildcardBubble(cx, cy, r);
@@ -1356,7 +1356,7 @@ function draw() {
     for (let c = 0; c < colsInRow(r); c++) {
       if (grid[r][c] >= 0) {
         const pos = bubblePos(r, c);
-        drawEmailBubble(pos.x, pos.y, R, grid[r][c]);
+        drawDreamBubble(pos.x, pos.y, R, grid[r][c]);
       }
     }
   }
@@ -1398,18 +1398,18 @@ function draw() {
                   : nextBubbleColour === BUBBLE_BOMB     ? 'BOMB'
                   : 'DREAM';
   ctx.fillText(nextLabel, 12, SHOOTER_Y - 28);
-  drawEmailBubble(28, SHOOTER_Y - 8, R * 0.65, nextBubbleColour);
+  drawDreamBubble(28, SHOOTER_Y - 8, R * 0.65, nextBubbleColour);
   ctx.restore();
 
   // Current bubble on shooter
-  drawEmailBubble(SHOOTER_X, SHOOTER_Y - 10, R, currentBubbleColour);
+  drawDreamBubble(SHOOTER_X, SHOOTER_Y - 10, R, currentBubbleColour);
 
   // Kobie
   drawKobie(SHOOTER_X, SHOOTER_Y + 30, aimAngle);
 
   // Projectile in flight
   if (projectile) {
-    drawEmailBubble(projectile.x, projectile.y, R, projectile.colour);
+    drawDreamBubble(projectile.x, projectile.y, R, projectile.colour);
   }
 
   // Float texts

@@ -968,7 +968,7 @@ function draw() {
   ctx.textAlign = 'center'; ctx.fillText('SCORE: ' + score, q * 0.5, hudY);
   ctx.textAlign = 'center'; ctx.fillText('WAVE: ' + wave, q * 1.5, hudY);
   ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', q * 2.5, hudY);
-  ctx.textAlign = 'center'; ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('hungry-hungry-kittens') : 0), q * 3.5, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('beast-feeder') : 0), q * 3.5, hudY);
   ctx.textBaseline = 'alphabetic';
 }
 
@@ -1047,9 +1047,9 @@ function endGame() {
   state = 'gameover';
   sfxGameOver();
   stopBgMusic();
-  hsSave('hungry-hungry-kittens', score);
+  hsSave('beast-feeder', score);
   finalScoreDisplay.textContent = `SCORE: ${score}`;
-  hsRenderBest('hungry-hungry-kittens', 'hs-gameover');
+  hsRenderBest('beast-feeder', 'hs-gameover');
   gameoverOverlay.classList.add('active');
 }
 
