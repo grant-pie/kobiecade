@@ -11,6 +11,15 @@ const waveEl  = document.getElementById('wave');
 const livesEl = document.getElementById('lives');
 const bestEl  = document.getElementById('best');
 
+let sessionBest = (typeof hsBest === 'function' ? hsBest('beast-feeder') : 0);
+
+function updateHighScore(newScore) {
+  if (newScore > sessionBest) {
+    sessionBest = newScore;
+    if (typeof hsSave === 'function') hsSave('beast-feeder', newScore);
+  }
+}
+
 // ── Overlay references ────────────────────────────────────
 const overlay        = document.getElementById('overlay');
 const gameoverOverlay= document.getElementById('gameover-overlay');
@@ -735,6 +744,7 @@ function startGame() {
   floatTexts = [];
   betweenWaves = false;
   betweenTimer = 0;
+  sessionBest = (typeof hsBest === 'function' ? hsBest('beast-feeder') : 0);
 
   const cfg = waveConfig(wave);
   nextSpawnIn = cfg.spawnRate;
@@ -890,6 +900,7 @@ function update() {
         if (k.hp <= 0) {
           const pts = 10 * wave;
           score += pts;
+          updateHighScore(score);
           spawnParticles(k.x, k.y, k.isDog ? DOG_COLORS[k.colorIdx] : KITTEN_COLORS[k.colorIdx]);
           addFloatText(k.x, k.y - 30, `+${pts}`, '#ff69b4');
           updateHUD();
@@ -989,7 +1000,7 @@ function draw() {
   ctx.textAlign = 'center'; ctx.fillText('SCORE: ' + score, q * 0.5, hudY);
   ctx.textAlign = 'center'; ctx.fillText('WAVE: ' + wave, q * 1.5, hudY);
   ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', q * 2.5, hudY);
-  ctx.textAlign = 'center'; ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('beast-feeder') : 0), q * 3.5, hudY);
+  ctx.textAlign = 'center'; ctx.fillText('BEST: ' + sessionBest, q * 3.5, hudY);
   ctx.textBaseline = 'alphabetic';
 }
 
@@ -1068,7 +1079,7 @@ function endGame() {
   state = 'gameover';
   sfxGameOver();
   stopBgMusic();
-  hsSave('beast-feeder', score);
+  // high-score saved live via updateHighScore() while playing
   finalScoreDisplay.textContent = `SCORE: ${score}`;
   hsRenderBest('beast-feeder', 'hs-gameover');
   gameoverOverlay.classList.add('active');

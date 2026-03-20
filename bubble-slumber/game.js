@@ -939,6 +939,14 @@ let floatTexts = [];
 
 // HUD dirty flags
 let _hudScore = -1, _hudWave = -1, _hudBest = -1, _hudPending = false;
+let sessionBest = (typeof hsBest === 'function' ? hsBest('bubble-slumber') : 0);
+
+function updateHighScore(newScore) {
+  if (newScore > sessionBest) {
+    sessionBest = newScore;
+    if (typeof hsSave === 'function') hsSave('bubble-slumber', newScore);
+  }
+}
 
 function scheduleHUD() {
   // HUD is drawn on canvas each frame
@@ -1009,6 +1017,7 @@ function pickNextBubble() {
 
 function startGame(keepWave = false) {
   if (!keepWave) { wave = 1; score = 0; }
+  sessionBest = (typeof hsBest === 'function' ? hsBest('bubble-slumber') : 0);
   _hudScore = _hudWave = _hudBest = -1;
   createGrid(wave);
   projectile  = null;
@@ -1028,7 +1037,7 @@ function endGame() {
   state = 'gameover';
   sfxGameOver();
   stopBgMusic();
-  hsSave('bubble-slumber', score);
+  // high-score saved live via updateHighScore() while playing
   finalScoreEl.textContent = `SCORE: ${score}`;
   hsRenderBest('bubble-slumber', 'hs-gameover');
   gameoverOverlay.classList.add('active');
@@ -1170,6 +1179,7 @@ function landProjectile() {
     const totalCleared = blasted + dropped;
     const pts = totalCleared * 10 * wave;
     score += pts;
+    updateHighScore(score);
     sfxCombo();
     addFloatText(SHOOTER_X, SHOOTER_Y - 90, `BOOM! +${pts}`, '#ff6622');
     scheduleHUD();
@@ -1260,6 +1270,7 @@ function landProjectile() {
     const totalCleared = group.length + dropped;
     const dropPts = dropped * 5 * wave;
     score += dropPts;
+    updateHighScore(score);
 
     if (colour === BUBBLE_WILDCARD) {
       sfxCombo();

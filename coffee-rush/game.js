@@ -882,6 +882,15 @@ let state      = 'start';
 let score      = 0;
 let lives      = 3;
 let frameCount = 0;
+let sessionBest = 0;
+
+function updateHighScore(newScore) {
+  if (newScore > sessionBest) {
+    sessionBest = newScore;
+    if (typeof hsSave === 'function') hsSave('coffee-rush', newScore);
+  }
+}
+
 // Kobie
 // KOBIE_Y/W declared at top of file
 let kobieX      = GAME_W / 2;
@@ -935,6 +944,7 @@ function startGame() {
   shieldTimer  = 0;
   kobieX      = GAME_W / 2;
   kobieTarget = GAME_W / 2;
+  sessionBest = (typeof hsBest === 'function' ? hsBest('coffee-rush') : 0);
   _hudScore   = _hudLives = _hudBest = -1;
   scheduleHUD();
   if (audioUnlocked && !musicSource) startBgMusic();
@@ -945,9 +955,9 @@ function endGame() {
   state = 'gameover';
   sfxGameOver();
   stopBgMusic();
-  hsSave('kobie-coffee-rush', score);
+  // high-score is already tracked live via updateHighScore()
   finalScoreEl.textContent = `SCORE: ${score}`;
-  hsRenderBest('kobie-coffee-rush', 'hs-gameover');
+  hsRenderBest('coffee-rush', 'hs-gameover');
   gameoverOverlay.classList.add('active');
 }
 
@@ -1028,6 +1038,7 @@ function update() {
       if (item.def.type === 'good') {
         const pts = item.def.points * (shieldActive ? 2 : 1);
         score += pts;
+        updateHighScore(score);
         sfxCatch();
         spawnCatchParticles(item.x, catchY, '#ffcc44');
         addFloatText(item.x, catchY - 20, `+${pts}`, '#ffcc44');
@@ -1052,12 +1063,14 @@ function update() {
             addFloatText(item.x, catchY - 20, '+1 LIFE', '#ff88aa');
           } else {
             score += 20;
+            updateHighScore(score);
             scheduleHUD();
             addFloatText(item.x, catchY - 20, '+20', '#ff88aa');
           }
         } else {
           // Star — points + temporary score doubler
           score += item.def.points;
+          updateHighScore(score);
           shieldActive = true;
           shieldTimer  = 300; // 5 seconds at 60fps
           scheduleHUD();
@@ -1157,7 +1170,7 @@ function draw() {
   const hudY = GAME_H - HUD_H / 2;
   ctx.textAlign = 'left';   ctx.fillText('SCORE: ' + score, 12, hudY);
   ctx.textAlign = 'center'; ctx.fillText('[ ' + 'I '.repeat(Math.max(0,lives)).trimEnd() + ' ]', GAME_W / 2, hudY);
-  ctx.textAlign = 'right';  ctx.fillText('BEST: ' + (typeof hsBest === 'function' ? hsBest('kobie-coffee-rush') : 0), GAME_W - 12, hudY);
+  ctx.textAlign = 'right';  ctx.fillText('BEST: ' + sessionBest, GAME_W - 12, hudY);
   ctx.textBaseline = 'alphabetic';
 }
 

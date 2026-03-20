@@ -363,6 +363,14 @@ const STARS = Array.from({ length: 50 }, () => {
 let state      = 'start';
 let score      = 0;
 let lives      = 3;
+let sessionBest = (typeof hsBest === 'function' ? hsBest('colour-capture') : 0);
+
+function updateHighScore(newScore) {
+  if (newScore > sessionBest) {
+    sessionBest = newScore;
+    if (typeof hsSave === 'function') hsSave('colour-capture', newScore);
+  }
+}
 let frameCount = 0;
 
 // Scrolling objects
@@ -421,6 +429,7 @@ function startGame() {
   spawnRate = 75; maxObjects = 6;
   objects = []; flashAnims = []; floatTexts = [];
   targetIdx = -1; pickNewTarget();
+  sessionBest = (typeof hsBest === 'function' ? hsBest('colour-capture') : 0);
   _hudScore = _hudBest = _hudLives = -1;
   scheduleHUD();
   if (audioUnlocked && !musicSource) startBgMusic();
@@ -430,7 +439,6 @@ function startGame() {
 function endGame() {
   state = 'gameover';
   sfxGameOver(); stopBgMusic();
-  hsSave('colour-capture', score);
   finalScoreEl.textContent = `SCORE: ${score}`;
   hsRenderBest('colour-capture', 'hs-gameover');
   gameoverOverlay.classList.add('active');
@@ -684,6 +692,7 @@ function onTap(clientX, clientY) {
 
   if (hit.isTarget) {
     score += 10;
+    updateHighScore(score);
     sfxCorrect();
     flashAnims.push({ x: hit.x, y: hit.y, r: hit.r, correct: true, life: 1 });
     addFloatText(hit.x, hit.y - hit.r - 10, '+10', '#44ff88');
